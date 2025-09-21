@@ -1,9 +1,93 @@
+<p align="center">
+  <img src="assets/logo.jpeg" alt="Erevos Logo" width="200"/>
+</p>
+
 # Erevos – Static PE Disassembler & Forensic Toolkit
 
-![Splash Screen](loading-screen.png)
+Erevos is a **static analysis toolkit** for Windows PE executables.  
+It provides investigators, reverse engineers, and malware analysts with an intuitive interface to explore binaries, extract forensic artifacts, and generate professional reports.  
 
-**Erevos** is a static analysis toolkit and disassembler for Windows PE executables.  
-It provides investigators, reverse engineers, and malware analysts with a clean interface to inspect binaries, extract artifacts, and generate reports.
+Whether you’re performing **malware triage**, **reverse engineering**, or **incident response**, Erevos gives you the visibility you need into suspicious executables.
+
+---
+
+## 🔹 Key Features
+
+- **PE Metadata Overview** – inspect sections, headers, and entropy values.  
+  ![Erevos View](assets/Erevos-View.png)
+
+- **Disassembly Viewer (ASM)** – Capstone-powered disassembly with syntax highlighting.  
+  ![Disassembly](assets/Dissasembly-Tab.png)
+
+- **Hex View** – raw hexadecimal view for byte-level inspection.  
+  ![Hex View](assets/Hex-View.png)
+
+- **Strings Extraction** – list of ASCII/Unicode strings found inside the PE.  
+  ![Strings Tab](assets/Strings-Tab.png)
+
+- **Imports / Exports Parsing** – all imported and exported functions.  
+  ![Imports Tab](assets/imports-tab.png)  
+  ![Exports Tab](assets/exports-tab.png)
+
+- **Resources Tab** – manifests, icons, dialogs, and version info.  
+  ![Resources Tab](assets/resources-tab.png)
+
+- **Critical Analysis** –  
+  - Risk scoring of suspicious APIs and functions.  
+    ![Critical Risk Tab](assets/Critical-risk-Tab.png)  
+  - Raw suspicious artifacts.  
+    ![Critical Hot Tab](assets/Critical-Hot-Tab.png)
+
+- **Control Flow Graph (CFG)** – visualize function control flow in an interactive graph.  
+  ![CFG Closeup](assets/cfg-tab-closeup.png)  
+  ![CFG Full](assets/cfg-tab-1.png)
+
+- **HTML Report Export** – generate professional forensic HTML reports.  
+  ![HTML Report Screenshot](assets/html-report-screenshot.png)  
+  ![Export HTML Button](assets/export-html-button.png)
+
+- **Disassembly Export** – save disassembly to `.txt`.  
+  ![Save Disassembly](assets/tools-save-dissasemled-asm-tto-txt.png)
+
+- **Packer/Obfuscation Analysis** – heuristic detection of packing, overlays, and TLS callbacks.  
+  ![Obfuscation Analysis](assets/tools-obfuscation-packer-analysis.png)
+
+---
+
+## 📖 Usage Guide
+
+1. **Start Erevos**  
+   Launch the application and load a PE file via:  
+   `File → Open PE…`
+
+2. **Navigate Through Tabs**  
+   - **Erevos View** – quick metadata overview.  
+   - **ASM** – disassembly with syntax highlighting.  
+   - **Hex View** – raw binary inspection.  
+   - **Strings / Imports / Exports / Resources** – forensic artifact views.  
+   - **Critical** – risk scoring and suspicious artifact detection.  
+   - **CFG** – interactive function graph.  
+
+3. **Generate Reports**  
+   - Export **HTML report**: `File → Export HTML Report…`  
+   - Export **Disassembly (TXT)**: `Tools → Export disasm (TXT)…`
+
+4. **Analysis Tools**  
+   - Run `Tools → Analyze Packer/Obfuscation` for heuristic packer detection.  
+   - Check the **Critical tab** for flagged APIs, suspicious imports, and risky behavior.
+
+---
+
+## 🚀 Planned Roadmap
+
+- Enhanced CFG export (image/PDF).  
+- YARA rules integration.  
+- Plugin system for custom analysis modules.  
+- Extended risk-scoring heuristics.  
+
+---
+
+## 📜 About
 
 - **Author:** Nikolaos Kranidiotis  
 - **Website:** [osec.gr](https://osec.gr)  
@@ -12,78 +96,7 @@ It provides investigators, reverse engineers, and malware analysts with a clean 
 
 ---
 
-## ✨ Features
+## 📌 License
 
-- **PE Metadata Overview** – quick summary of headers, manifest, and version info  
-  ![Erevos View](Erevos-View.png)
-
-- **Disassembly Viewer (ASM)** – Capstone-based disassembly with syntax highlighting  
-  ![Disassembly](Dissasembly-Tab.png)
-
-- **Hex View** – raw hexadecimal dump of the binary  
-  ![Hex View](Hex-View.png)
-
-- **Strings Extraction** – ASCII/Unicode strings with filtering  
-  ![Strings Tab](Strings-Tab.png)
-
-- **Imports / Exports Parsing** – function imports & exports listing  
-  ![Imports Tab](imports-tab.png)  
-  ![Exports Tab](exports-tab.png)
-
-- **Resources Tab** – manifests, icons, dialogs, and version info  
-  ![Resources Tab](resources-tab.png)
-
-- **Critical Analysis** –  
-  - Risk scoring of suspicious functions/URLs  
-    ![Critical Risk Tab](Critical-risk-Tab.png)  
-  - Hot raw artifacts  
-    ![Critical Hot Tab](Critical-Hot-Tab.png)
-
-- **Control Flow Graph (CFG)** – interactive function graph visualization  
-  ![CFG Closeup](cfg-tab-closeup.png)  
-  ![CFG Full](cfg-tab-1.png)
-
-- **HTML Report Export** – professional forensic report containing sections, imports/exports, resources, and metadata  
-  ![HTML Report Screenshot](html-report-screenshot.png)  
-  ![Export HTML Button](export-html-button.png)
-
-- **Disassembly Export** – save full disassembly to `.txt`  
-  ![Save Disassembly](tools-save-dissasemled-asm-tto-txt.png)
-
-- **Obfuscation/Packer Detection** – heuristic detection of overlays, TLS callbacks, and suspicious sections  
-  ![Obfuscation Analysis](tools-obfuscation-packer-analysis.png)
-
----
-
-## 📖 Usage Guide
-
-1. **Start Erevos**  
-   Launch the app and load a PE executable via **File → Open PE…**  
-
-2. **Navigation**  
-   - Use the **tab bar** to switch between analysis views (Erevos View, ASM, Hex, Strings, Imports, Exports, Critical, Resources, CFG).  
-   - Left panel lists detected functions; use the search bar to filter by address or name.  
-
-3. **Reports & Exports**  
-   - Export a professional **HTML report** via **File → Export HTML Report**.  
-   - Save raw **disassembly** to text via **Tools → Export disasm (TXT)**.  
-
-4. **Analysis Tools**  
-   - Run **packer/obfuscation detection** via **Tools → Analyze Packer/Obfuscation**.  
-   - Use **Critical tab** to quickly review suspicious artifacts, URLs, and risk scores.  
-
----
-
-## 🛠 Planned Roadmap
-
-- Advanced CFG interactions (zoom, export to image/PDF).  
-- Real-time heuristic scoring.  
-- Plugin system for custom analyzers.  
-- YARA integration.  
-
----
-
-## 📜 License
-
-Erevos is distributed for **forensic and research purposes**.  
-Unauthorized malicious use is strictly prohibited.
+Erevos is distributed for **forensic and research purposes only**.  
+Any malicious use is strictly prohibited.
