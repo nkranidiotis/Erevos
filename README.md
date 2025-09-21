@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.jpeg" alt="Erevos Logo" width="600"/>
+  <img src="assets/logo.jpeg" alt="Erevos Logo" width="800"/>
 </p>
 
 # Erevos – Static PE Disassembler & Forensic Toolkit
