@@ -1,0 +1,118 @@
+/* Erevos styles.qss */
+
+/* Global */
+QWidget {
+    background-color: #fdfdfd;
+    color: #000000;
+    font-family: Consolas, monospace;
+    font-size: 11pt;
+}
+
+/* Menus */
+QMenuBar {
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #cccccc;
+}
+QMenuBar::item:selected {
+    background: #d0d0ff;
+}
+QMenu {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+}
+QMenu::item:selected {
+    background-color: #d0d0ff;
+}
+
+/* Toolbar */
+QToolBar {
+    background: #fafafa;
+    border-bottom: 1px solid #cccccc;
+}
+QToolButton {
+    padding: 4px 8px;
+}
+QToolButton:hover {
+    background-color: #e0e0ff;
+}
+
+/* Left panel (Functions list) */
+QListWidget {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+}
+QListWidget::item:selected {
+    background: #b0b0ff;
+    color: #000000;
+}
+
+/* Functions header (needs setObjectName("FunctionsHeader")) */
+QLabel#FunctionsHeader {
+    font-weight: bold;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    padding: 4px;
+    margin-bottom: 4px;
+    background: #f0f0f0;
+}
+
+/* Tabs */
+QTabWidget::pane {
+    border: 1px solid #cccccc;
+    background: #ffffff;
+}
+QTabBar::tab {
+    background: #eeeeee;
+    padding: 6px 12px;
+    border: 1px solid #cccccc;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+QTabBar::tab:selected {
+    background: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+/* ASM view (needs setObjectName("AsmView")) */
+QTextEdit#AsmView {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f9f9ff,
+        stop:1 #f0eaff
+    );
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+}
+
+/* Other text views */
+QTextEdit {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+}
+
+/* Console (bottom) */
+QPlainTextEdit#Console {
+    background-color: #000000;
+    color: #00ff00;
+    border-top: 2px solid #444444;
+    font-family: Consolas, monospace;
+    font-size: 10pt;
+}
+QGraphicsView#ErevosView {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f2e6ff,   /* light purple top */
+        stop:1 #ffffff    /* fade to white */
+    );
+    border: 1px solid #000;
+}
+QGraphicsView#CfgView {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f2e6ff,
+        stop:1 #ffffff
+    );
+    border: 1px solid #000;
+}
