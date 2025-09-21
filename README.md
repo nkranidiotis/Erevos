@@ -76,6 +76,7 @@ Whether you’re performing **malware triage**, **reverse engineering**, or **in
    - Run `Tools → Analyze Packer/Obfuscation` for heuristic packer detection.  
    - Check the **Critical tab** for flagged APIs, suspicious imports, and risky behavior.
 
+Install dependencies with: `pip install -r requirements.txt`
 ---
 
 ## 🚀 Planned Roadmap
