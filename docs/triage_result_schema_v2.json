@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://erevos.local/schemas/triage-result-v2.json",
+  "title": "Erevos Triage Result v2",
+  "type": "object",
+  "required": ["schema_version", "file", "hashes", "score", "verdict", "stats"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "file": {"type": "string"},
+    "hashes": {"type": "object"},
+    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "verdict": {"type": "string", "enum": ["low", "medium", "high"]},
+    "findings": {"type": "array", "items": {"type": "string"}},
+    "capabilities": {"type": "object"},
+    "capability_tags": {"type": "array", "items": {"type": "string"}},
+    "rule_hits": {"type": "array", "items": {"type": "object"}},
+    "plugins": {"type": "array", "items": {"type": "object"}},
+    "evidence": {"type": "array", "items": {"type": "object"}},
+    "stats": {"type": "object"},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}
