@@ -22,6 +22,10 @@ class SessionPersistenceTest(unittest.TestCase):
             cfg_intel_summary={"0x401000": {"analysis": {"basic_block_count": 3}}},
             naming_suggestions={"0x401000": {"suggested_name": "possible_network_init_00401000", "confidence": "high"}},
             applied_suggested_names={"0x401000": "possible_network_init_00401000"},
+            data_flow_insights={"0x401000": {"api_argument_insights": [{"api": "KERNEL32!WriteFile"}]}},
+            api_semantics_insights={"0x401000": {"high_value_calls": [{"api": "KERNEL32!WriteFile", "call_site": "0x401020"}]}},
+            behavior_patterns={"patterns": [{"pattern": "file dropper", "confidence": "medium"}]},
+            threat_narrative={"risk_assessment": {"level": "medium"}},
         )
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "sample.exe.erevos"
@@ -36,6 +40,10 @@ class SessionPersistenceTest(unittest.TestCase):
             self.assertEqual(rd.cfg_intel_summary["0x401000"]["analysis"]["basic_block_count"], 3)
             self.assertEqual(rd.naming_suggestions["0x401000"]["confidence"], "high")
             self.assertEqual(rd.applied_suggested_names["0x401000"], "possible_network_init_00401000")
+            self.assertEqual(rd.data_flow_insights["0x401000"]["api_argument_insights"][0]["api"], "KERNEL32!WriteFile")
+            self.assertEqual(rd.api_semantics_insights["0x401000"]["high_value_calls"][0]["api"], "KERNEL32!WriteFile")
+            self.assertEqual(rd.behavior_patterns["patterns"][0]["pattern"], "file dropper")
+            self.assertEqual(rd.threat_narrative["risk_assessment"]["level"], "medium")
 
     def test_backward_compatible_tuple_wrapped_function_intel(self):
         payload = {
@@ -56,6 +64,10 @@ class SessionPersistenceTest(unittest.TestCase):
             "cfg_intel_summary": ([{"0x401111": {"analysis": {"basic_block_count": 2}}}]),
             "naming_suggestions": ([{"0x401111": {"suggested_name": "possible_x_401111", "confidence": "low"}}]),
             "applied_suggested_names": {"0x401111": "possible_x_401111"},
+            "data_flow_insights": {"0x401111": {"api_argument_insights": [{"api": "KERNEL32!CreateFileW"}]}},
+            "api_semantics_insights": {"0x401111": {"high_value_calls": [{"api": "KERNEL32!CreateFileW"}]}},
+            "behavior_patterns": {"patterns": [{"pattern": "file dropper", "confidence": "low"}]},
+            "threat_narrative": ({"risk_assessment": {"level": "low"}},),
         }
         st = SessionState.from_dict(payload)
         self.assertIsInstance(st.function_intel_summary, dict)
@@ -65,6 +77,10 @@ class SessionPersistenceTest(unittest.TestCase):
         self.assertIsInstance(st.cfg_intel_summary, dict)
         self.assertIsInstance(st.naming_suggestions, dict)
         self.assertEqual(st.applied_suggested_names["0x401111"], "possible_x_401111")
+        self.assertEqual(st.data_flow_insights["0x401111"]["api_argument_insights"][0]["api"], "KERNEL32!CreateFileW")
+        self.assertEqual(st.api_semantics_insights["0x401111"]["high_value_calls"][0]["api"], "KERNEL32!CreateFileW")
+        self.assertEqual(st.behavior_patterns["patterns"][0]["pattern"], "file dropper")
+        self.assertEqual(st.threat_narrative["risk_assessment"]["level"], "low")
 
 
 if __name__ == "__main__":

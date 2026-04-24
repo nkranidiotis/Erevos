@@ -100,6 +100,9 @@ class SessionState:
     cfg_intel_summary: Dict[str, Any] = field(default_factory=dict)
     naming_suggestions: Dict[str, Any] = field(default_factory=dict)
     applied_suggested_names: Dict[str, str] = field(default_factory=dict)
+    data_flow_insights: Dict[str, Any] = field(default_factory=dict)
+    api_semantics_insights: Dict[str, Any] = field(default_factory=dict)
+    behavior_patterns: Dict[str, Any] = field(default_factory=dict)
     threat_narrative: Dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
@@ -127,6 +130,9 @@ class SessionState:
             cfg_intel_summary=normalize_cfg_intel_summary(data.get("cfg_intel_summary")),
             naming_suggestions=normalize_naming_suggestions(data.get("naming_suggestions")),
             applied_suggested_names=dict(data.get("applied_suggested_names") or {}),
+            data_flow_insights=dict(data.get("data_flow_insights") or {}),
+            api_semantics_insights=dict(data.get("api_semantics_insights") or {}),
+            behavior_patterns=dict(data.get("behavior_patterns") or {}),
             threat_narrative=normalize_threat_narrative(data.get("threat_narrative")),
         )
 

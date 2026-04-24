@@ -1,9 +1,39 @@
 import unittest
+import importlib.util
 
 from core.modules.report import render_html
 
 
+@unittest.skipUnless(importlib.util.find_spec("jinja2") is not None, "jinja2 is required for render_html tests")
 class ReportSyntheticRenderTest(unittest.TestCase):
+    def test_render_html_minimal_payload_has_core_headers(self):
+        data = {
+            "schema_version": "erevos.report.v2",
+            "case": {"case_id": "CASE-MIN", "examiner": "QA", "analyst_notes": "minimal"},
+            "meta": {"path": "minimal.exe", "machine": "0x14c"},
+            "sections": [],
+            "imports": {},
+            "exports": [],
+            "resources": {},
+            "risk": [],
+            "packer": {},
+            "strings": [],
+            "notes": [],
+            "triage": {},
+        }
+        html = render_html(data)
+        self.assertIn("Executive Summary", html)
+        self.assertIn("File / PE Metadata", html)
+        self.assertIn("Sections", html)
+        self.assertIn("Imports", html)
+        self.assertIn("Exports", html)
+        self.assertIn("Resources", html)
+        self.assertIn("Risk Findings", html)
+        self.assertIn("Packer / Obfuscation", html)
+        self.assertIn("Notes", html)
+        self.assertIn("Conclusions", html)
+        self.assertIn("Recommendations", html)
+
     def test_render_html_with_minimal_fake_data(self):
         data = {
             "schema_version": "erevos.report.v2",
@@ -404,6 +434,73 @@ class ReportSyntheticRenderTest(unittest.TestCase):
         html = render_html(data)
         self.assertIn("Threat Narrative", html)
         self.assertIn("Execution Flow Summary", html)
+
+    def test_render_html_maximal_payload_has_all_major_sections(self):
+        data = {
+            "schema_version": "erevos.report.v2",
+            "case": {"case_id": "CASE-MAX", "examiner": "QA", "analyst_notes": "maximal"},
+            "meta": {
+                "path": "maximal.exe",
+                "size": 1111,
+                "image_base": "0x400000",
+                "entry_point": "0x401000",
+                "machine": "0x14c",
+                "timestamp": 0,
+                "timestamp_iso": "1970-01-01 00:00:00Z",
+                "subsystem": 2,
+                "dll_characteristics": 0,
+            },
+            "sections": [{"name": ".text", "va": "0x401000", "raw_size": 512, "virtual_size": 1024, "characteristics": 0x60000020, "executable": True, "entropy": 6.8}],
+            "imports": {"KERNEL32.dll": ["CreateFileW"]},
+            "exports": [{"va": "0x401000", "name": "ExportedEntry"}],
+            "resources": {"manifest": ["<assembly/>"], "version_info": {"FileVersion": "1.0.0.0"}},
+            "risk": [{"va": "0x401000", "name": "sub_401000", "score": 80, "reason": "suspicious api", "reasons": ["api"], "hints": []}],
+            "packer": {"score": 10, "reasons": [], "hints": []},
+            "strings": [{"va": "0x402000", "rva": "0x2000", "file_off": "0x600", "encoding": "ascii", "text": "http://example.test"}],
+            "notes": ["note 1"],
+            "triage": {
+                "score": 72,
+                "verdict": "high",
+                "findings": ["injection candidate"],
+                "capability_tags": ["process_injection_suspected"],
+                "rule_hits": [{"name": "combo"}],
+                "plugins": [],
+                "hashes": {"imphash": "abc", "rich_hash": "def", "fuzzy_hash": "ghi"},
+                "evidence": [{"rule": "api_combo", "details": "VirtualAllocEx+WriteProcessMemory+CreateRemoteThread"}],
+                "stats": {"entropy_heatmap": [], "imports": {"clusters": {}, "api_combinations": []}, "oep": {"oep_disasm_preview": []}, "tls": {"count": 0}, "overlay": {"overlay_size": 0}, "header_anomalies": [], "sections": {"resource_entropy": []}, "artifacts": {"artifacts": []}},
+            },
+            "xrefs_summary": {"top_called_functions": ["0x401000"]},
+            "function_intelligence_summary": {"top_risky_functions": [{"start": "0x00401000", "risk_indicators": [], "suspicious_api_usage": [], "inbound_xrefs": 1}], "functions_with_suspicious_apis": [], "functions_with_interesting_strings": [], "analyst_renamed_functions": [], "commented_or_bookmarked_functions": []},
+            "behavior_summaries": {"0x00401000": {"function_address": "0x00401000", "short_behavior_summary": "heuristic summary", "evidence_bullets": ["e1"], "confidence": "low", "possible_capability_tags": [], "caveats": ["heuristic"]}},
+            "call_graph_summary": {"entry_reachable_functions": ["0x00401000"], "top_hub_functions": [{"address": "0x00401000", "inbound_degree": 1, "outbound_degree": 1, "suspicious": False}], "suspicious_call_chains": [], "suspicious_api_bridge_functions": [], "isolated_or_unreferenced_functions": [], "heuristic_note": "heuristic"},
+            "cfg_intel_summary": {"0x00401000": {"analysis": {"basic_block_count": 2, "branch_count": 1, "branch_density": 0.5, "unresolved_edge_count": 0, "abnormal_high_branch_density": False}}},
+            "naming_suggestions": {"0x00401000": {"address": "0x00401000", "suggested_name": "possible_main_00401000", "confidence": "high", "evidence_bullets": ["e"], "caveats": []}},
+            "data_flow_insights": {"0x00401000": {"high_confidence_findings": [{"type": "api_argument_insight", "api": "KERNEL32!WriteFile", "call_site": "0x00401020", "evidence": "reg state", "estimated": True}]}},
+            "api_semantics_insights": {"0x00401000": {"high_value_calls": [{"api": "KERNEL32!VirtualAlloc", "call_site": "0x00401030", "capability_tags": ["memory_allocation"], "interpreted_arguments": [], "evidence": "x", "confidence": "high", "estimated": True}]}},
+            "behavior_patterns": {"high_confidence_patterns": [{"pattern": "process injection", "confidence": "high", "scope": "per-function", "involved_functions": ["0x00401000"], "evidence_chain": ["OpenProcess @ ..."], "caveats": ["heuristic"]}]},
+            "threat_narrative": {"threat_overview": {"summary": "Static evidence suggests possible process injection behavior candidate.", "evidence": ["process injection: OpenProcess"]}, "capability_summary": [{"capability": "process injection", "confidence": "high"}], "execution_flow_summary": ["opens process -> writes payload -> creates thread"], "key_functions": [{"function": "0x00401000", "role": "pattern-linked function", "why_it_matters": "important"}], "indicators_of_compromise": {"urls": ["http://example.test"], "ips": [], "file_paths": [], "mutexes": [], "relevant_api_usage": []}, "risk_assessment": {"level": "high", "reason": "patterns"}, "caveats": ["static only"]},
+            "analyst_artifacts": {"renamed_functions": {"0x00401000": "main"}, "comments": {"0x00401000": "note"}, "labels": {"0x00401000": "entry"}, "bookmarks": ["0x00401000"]},
+        }
+        html = render_html(data)
+        for hdr in [
+            "Threat Narrative",
+            "Executive Summary",
+            "Triage Analysis 2.0",
+            "XREF Summary",
+            "Function Intelligence Summary",
+            "Behavioral Function Summaries",
+            "Call Graph Intelligence",
+            "CFG Intelligence",
+            "Symbol &amp; Naming Intelligence",
+            "Data Flow Insights",
+            "API Semantics Intelligence",
+            "Behavior Pattern Detection",
+            "Analyst Workspace Artifacts",
+            "Conclusions",
+            "Recommendations",
+            "Notes",
+        ]:
+            self.assertIn(hdr, html)
 
 
 if __name__ == "__main__":

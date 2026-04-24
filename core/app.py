@@ -7,9 +7,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import (
     QKeySequence, QFont, QAction, QColor, QTextCursor, QTextCharFormat,
-    QPainter, QFontMetrics
+    QPainter, QFontMetrics, QPen, QBrush, QMouseEvent
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QPointF, QRectF
 from pathlib import Path
 import traceback
 import re
@@ -35,13 +35,6 @@ from core.modules.data_flow_intel import analyze_function_data_flow
 from core.modules.api_semantics_intel import interpret_api_semantics
 from core.modules.behavior_patterns_intel import detect_behavior_patterns
 from core.modules.threat_narrative_intel import build_threat_narrative
-
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsTextItem
-from PyQt6.QtGui import QPainter, QPen, QBrush, QFont
-from PyQt6.QtCore import Qt, QPointF
-
-from PyQt6.QtGui import QPen, QBrush, QFont, QMouseEvent
-from PyQt6.QtCore import Qt, QPointF, QRectF
 
 # Try import pedisasm - if not present, we'll show a friendly message in UI
 try:
@@ -1732,6 +1725,9 @@ class MainWindow(QMainWindow):
         self.session.cfg_intel_summary = dict(getattr(self, "_cfg_intel_summary", {}) or {})
         self.session.naming_suggestions = dict(getattr(self, "_naming_suggestions", {}) or {})
         self.session.applied_suggested_names = dict(getattr(self, "_applied_suggested_names", {}) or {})
+        self.session.data_flow_insights = dict(getattr(self, "_data_flow_by_function", {}) or {})
+        self.session.api_semantics_insights = dict(getattr(self, "_api_semantics_by_function", {}) or {})
+        self.session.behavior_patterns = dict(getattr(self, "_behavior_patterns", {}) or {})
         self.session.threat_narrative = normalize_threat_narrative(getattr(self, "_threat_narrative", {}) or {})
         p = self.session_path or SessionState.session_path_for_sample(self.current_file)
         self.session.save(p)
@@ -1747,6 +1743,9 @@ class MainWindow(QMainWindow):
         self._cfg_intel_summary = dict(self.session.cfg_intel_summary or {})
         self._naming_suggestions = dict(self.session.naming_suggestions or {})
         self._applied_suggested_names = dict(self.session.applied_suggested_names or {})
+        self._data_flow_by_function = dict(self.session.data_flow_insights or {})
+        self._api_semantics_by_function = dict(self.session.api_semantics_insights or {})
+        self._behavior_patterns = dict(self.session.behavior_patterns or {})
         self._threat_narrative = normalize_threat_narrative(self.session.threat_narrative)
         self._render_threat_narrative()
 
