@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg-color: #f4f4f0;
+      --header-bg: #111b24;
+      --text-main: #222;
+      --text-muted: #555;
+      --border-color: #dcdccf;
+      --danger-color: #900;
+      --warn-color: #8a5b00;
+      --ok-color: #1f6b30;
+      --highlight-bg: #e8e8e0;
+      --font-mono: "Consolas", "Courier New", monospace;
+      --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    @page { size: A4; margin: 14mm; }
+    body { background:#ddd; font-family:var(--font-sans); color:var(--text-main); margin:0; padding:20px; }
+    .page { background:var(--bg-color); max-width:1000px; margin:0 auto 20px auto; border:1px solid #999; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    .header { background:var(--header-bg); color:#fff; padding:18px 24px; border-bottom:4px solid #1f2d3a; }
+    .header-top { display:flex; align-items:center; gap:14px; }
+    .logo { width:42px; height:42px; object-fit:contain; background:#fff; border-radius:4px; }
+    h1 { margin:0; font-size:27px; letter-spacing:2px; font-family:var(--font-mono); }
+    .header-meta { margin-top:8px; color:#c6d1db; font-size:12px; font-family:var(--font-mono); border-top:1px solid #2f4458; padding-top:8px; }
+    .content { padding:24px; }
+    h2 { font-size:14px; text-transform:uppercase; border-bottom:1px solid var(--border-color); padding-bottom:5px; margin:24px 0 12px 0; letter-spacing:1px; }
+    .summary-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+    .badge { background:var(--highlight-bg); border:1px solid var(--border-color); padding:7px 10px; font-size:12px; border-radius:4px; font-weight:600; }
+    .badge.danger { color:var(--danger-color); }
+    .badge.warn { color:var(--warn-color); }
+    .badge.ok { color:var(--ok-color); }
+    table { width:100%; border-collapse:collapse; margin-bottom:18px; font-size:12px; }
+    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--border-color); vertical-align:top; }
+    th { background:var(--highlight-bg); font-family:var(--font-mono); }
+    .mono { font-family:var(--font-mono); }
+    .code-block { background:var(--highlight-bg); border:1px solid var(--border-color); padding:12px; font-family:var(--font-mono); font-size:11px; white-space:pre-wrap; line-height:1.4; }
+    .muted { color:var(--text-muted); font-size:11px; }
+    .footer { text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); padding:14px 24px; border-top:1px solid var(--border-color); }
+    ul { margin:8px 0 14px 20px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-top">
+        {% if logo_data_uri %}<img class="logo" src="{{ logo_data_uri }}" alt="Erevos Logo" />{% endif %}
+        <h1>EREVOS</h1>
+      </div>
+      <div class="header-meta">
+        Case: {{ case.case_id|default('-', true) }} | Examiner: {{ case.examiner|default('-', true) }} | Date: {{ case.generated_utc|default('-', true) }} | Target: {{ meta.path|default('-', true) }}
+      </div>
+    </div>
+
+    <div class="content">
+      {% if threat_narrative %}
+      <h2>Threat Narrative</h2>
+      <h3>Threat Overview</h3>
+      <div class="code-block">{{ threat_narrative.threat_overview.summary|default('No threat overview available.', true) }}</div>
+      <ul>
+        {% for e in threat_narrative.threat_overview.evidence|default([], true) %}<li>{{ e }}</li>{% endfor %}
+        {% if not threat_narrative.threat_overview.evidence %}<li>No overview evidence captured.</li>{% endif %}
+      </ul>
+      <h3>Capability Summary</h3>
+      <ul>
+        {% for c in threat_narrative.capability_summary|default([], true) %}
+        <li>{{ c.capability|default('capability', true) }} (confidence={{ c.confidence|default('low', true) }})</li>
+        {% endfor %}
+        {% if not threat_narrative.capability_summary %}<li>No high-confidence capabilities detected.</li>{% endif %}
+      </ul>
+      <h3>Execution Flow Summary</h3>
+      <ul>
+        {% for f in threat_narrative.execution_flow_summary|default([], true) %}<li>{{ f }}</li>{% endfor %}
+        {% if not threat_narrative.execution_flow_summary %}<li>No clear sequence detected.</li>{% endif %}
+      </ul>
+      <h3>Key Functions</h3>
+      <ul>
+        {% for k in threat_narrative.key_functions|default([], true) %}
+        <li class="mono">{{ k.function|default('-', true) }} | role={{ k.role|default('-', true) }} | why={{ k.why_it_matters|default('-', true) }}</li>
+        {% endfor %}
+        {% if not threat_narrative.key_functions %}<li>No key functions identified.</li>{% endif %}
+      </ul>
+      <h3>Indicators of Compromise (IoC)</h3>
+      <div class="code-block">URLs: {{ threat_narrative.indicators_of_compromise.urls|default([], true) }}
+IPs: {{ threat_narrative.indicators_of_compromise.ips|default([], true) }}
+File Paths: {{ threat_narrative.indicators_of_compromise.file_paths|default([], true) }}
+Mutexes: {{ threat_narrative.indicators_of_compromise.mutexes|default([], true) }}
+Relevant API Usage: {{ threat_narrative.indicators_of_compromise.relevant_api_usage|default([], true) }}</div>
+      <h3>Risk Assessment</h3>
+      <div class="code-block">Level: {{ threat_narrative.risk_assessment.level|default('low', true) }}
+Reason: {{ threat_narrative.risk_assessment.reason|default('-', true) }}</div>
+      <h3>Caveats</h3>
+      <ul>
+        {% for c in threat_narrative.caveats|default([], true) %}<li>{{ c }}</li>{% endfor %}
+        {% if not threat_narrative.caveats %}<li>Static-analysis caveats not provided.</li>{% endif %}
+      </ul>
+      {% endif %}
+      <h2>Executive Summary</h2>
+      <ul>
+        {% for line in executive_summary|default([], true) %}
+        <li>{{ line }}</li>
+        {% endfor %}
+        {% if not executive_summary %}<li>No executive summary available.</li>{% endif %}
+      </ul>
+
+      <h2>Analysis Summary</h2>
+      <div class="summary-row">
+        <div class="badge {% if summary.risk_score >= 70 %}danger{% elif summary.risk_score >= 40 %}warn{% else %}ok{% endif %}">Risk Score: {{ summary.risk_score }} ({{ summary.risk_verdict }})</div>
+        <div class="badge">Packer Score: {{ summary.packer_score }} ({{ summary.packer_label }})</div>
+        <div class="badge">Architecture: {{ summary.architecture }}</div>
+        <div class="badge">Sections: {{ summary.section_count }}</div>
+        <div class="badge">Import DLLs: {{ summary.import_dll_count }}</div>
+        <div class="badge">High Entropy Sections: {{ summary.high_entropy_sections }}</div>
+      </div>
+
+      <h2>File / PE Metadata</h2>
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Path</td><td class="mono">{{ meta.path|default('-', true) }}</td></tr>
+        <tr><td>Size</td><td>{{ meta.size|default(0, true) }}</td></tr>
+        <tr><td>Image Base</td><td class="mono">{{ meta.image_base|default('-', true) }}</td></tr>
+        <tr><td>Entry Point</td><td class="mono">{{ meta.entry_point|default('-', true) }}</td></tr>
+        <tr><td>Machine</td><td class="mono">{{ meta.machine|default('-', true) }}</td></tr>
+        <tr><td>Timestamp (raw)</td><td class="mono">{{ meta.timestamp|default('-', true) }}</td></tr>
+        <tr><td>Timestamp (ISO)</td><td class="mono">{{ meta.timestamp_iso|default('-', true) }}</td></tr>
+        <tr><td>Subsystem</td><td>{{ meta.subsystem|default('-', true) }}</td></tr>
+        <tr><td>DLL Characteristics</td><td class="mono">{{ meta.dll_characteristics|default('-', true) }}</td></tr>
+      </table>
+
+      {% if triage_present %}
+      <h2>Triage Analysis 2.0</h2>
+      <div class="summary-row">
+        <div class="badge {% if triage_v2.score|default(0, true) >= 70 %}danger{% elif triage_v2.score|default(0, true) >= 40 %}warn{% else %}ok{% endif %}">
+          Triage Score: {{ triage_v2.score|default(0, true) }} ({{ triage_v2.verdict|default('unknown', true) }})
+        </div>
+        <div class="badge {% if triage_v2.severity_label in ['Critical','High'] %}danger{% elif triage_v2.severity_label == 'Medium' %}warn{% else %}ok{% endif %}">
+          Severity: {{ triage_v2.severity_label|default('Low', true) }}
+        </div>
+        <div class="badge">Capability Tags: {{ triage_v2.capability_tags|length }}</div>
+        <div class="badge">Rule Hits: {{ triage_v2.rule_hits|length }}</div>
+        <div class="badge">Plugin Results: {{ triage_v2.plugins|length }}</div>
+      </div>
+
+      <h2>Triage Hashes</h2>
+      <table>
+        <tr><th>Type</th><th>Value</th></tr>
+        <tr><td>imphash</td><td class="mono">{{ triage_v2.hashes.imphash|default('-', true) }}</td></tr>
+        <tr><td>rich hash</td><td class="mono">{{ triage_v2.hashes.rich_hash|default('-', true) }}</td></tr>
+        <tr><td>fuzzy hash</td><td class="mono">{{ triage_v2.hashes.fuzzy_hash|default('-', true) }}</td></tr>
+      </table>
+
+      <h2>Capability Tags</h2>
+      <ul>
+        {% for t in triage_v2.capability_tags|default([], true) %}<li class="mono">{{ t }}</li>{% endfor %}
+        {% if not triage_v2.capability_tags %}<li>No capability tags.</li>{% endif %}
+      </ul>
+
+      <h2>Rule Hits</h2>
+      <table>
+        <thead><tr><th>Rule</th><th>Severity</th><th>Tag</th><th>Message</th></tr></thead>
+        <tbody>
+          {% for r in triage_v2.rule_hits|default([], true) %}
+          <tr><td class="mono">{{ r.name|default('-', true) }}</td><td>{{ r.severity|default('-', true) }}</td><td class="mono">{{ r.tag|default('-', true) }}</td><td>{{ r.message|default('-', true) }}</td></tr>
+          {% endfor %}
+          {% if not triage_v2.rule_hits %}<tr><td colspan="4">No rule hits.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Plugin Results</h2>
+      <table>
+        <thead><tr><th>Plugin</th><th>Error</th><th>Result</th></tr></thead>
+        <tbody>
+          {% for p in triage_v2.plugins|default([], true) %}
+          <tr><td class="mono">{{ p.plugin|default('-', true) }}</td><td>{{ p.error|default('-', true) }}</td><td class="mono">{{ p.result|default('-', true) }}</td></tr>
+          {% endfor %}
+          {% if not triage_v2.plugins %}<tr><td colspan="3">No plugin results.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Import Behavior Clusters</h2>
+      <table>
+        <thead><tr><th>Cluster</th><th>APIs</th></tr></thead>
+        <tbody>
+          {% for k, v in triage_v2.import_clusters.items() %}
+          <tr><td>{{ k }}</td><td class="mono">{{ v|join(', ') }}</td></tr>
+          {% endfor %}
+          {% if not triage_v2.import_clusters %}<tr><td colspan="2">No clusters detected.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Suspicious API Combinations</h2>
+      <ul>
+        {% for c in triage_v2.api_combinations|default([], true) %}<li class="mono">{{ c }}</li>{% endfor %}
+        {% if not triage_v2.api_combinations %}<li>None detected.</li>{% endif %}
+      </ul>
+
+      <h2>OEP Byte / Disassembly Preview</h2>
+      <div class="code-block">OEP RVA: {{ triage_v2.oep.entrypoint_rva|default('-', true) }}
+OEP VA: {{ triage_v2.oep.entrypoint_va|default('-', true) }}
+OEP Offset: {{ triage_v2.oep.entrypoint_file_offset|default('-', true) }}
+OEP Section: {{ triage_v2.oep.entrypoint_section|default('-', true) }}
+OEP Bytes: {{ triage_v2.oep.entrypoint_bytes_hex|default('-', true) }}
+{% if triage_v2.oep.oep_disasm_preview %}
+{% for line in triage_v2.oep.oep_disasm_preview %}{{ line }}
+{% endfor %}
+{% else %}No disassembly preview available.{% endif %}</div>
+
+      <h2>TLS Callbacks</h2>
+      <div class="code-block">Count: {{ triage_v2.tls.count|default(0, true) }}
+Callbacks: {{ triage_v2.tls.callbacks|default([], true) }}</div>
+
+      <h2>Overlay Analysis</h2>
+      <div class="code-block">Size: {{ triage_v2.overlay.overlay_size|default(0, true) }}
+Ratio: {{ triage_v2.overlay.overlay_ratio|default(0, true) }}
+Class: {{ triage_v2.overlay.classification|default('none', true) }}
+Preview: {{ triage_v2.overlay.preview_hex|default('', true) }}</div>
+
+      <h2>Malformed Header Anomalies</h2>
+      <ul>{% for h in triage_v2.header_anomalies|default([], true) %}<li class="mono">{{ h }}</li>{% endfor %}{% if not triage_v2.header_anomalies %}<li>None.</li>{% endif %}</ul>
+
+      <h2>Resource Entropy Findings</h2>
+      <table>
+        <thead><tr><th>Resource Section</th><th>Entropy</th></tr></thead>
+        <tbody>
+          {% for r in triage_v2.resource_entropy|default([], true) %}<tr><td class="mono">{{ r.name }}</td><td>{{ r.entropy }}</td></tr>{% endfor %}
+          {% if not triage_v2.resource_entropy %}<tr><td colspan="2">No resource entropy findings.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Embedded Config Artifacts</h2>
+      <table>
+        <thead><tr><th>Offset</th><th>Encoding</th><th>Value</th></tr></thead>
+        <tbody>
+          {% for a in triage_v2.config_artifacts|default([], true) %}
+          <tr><td class="mono">{{ a.offset|default('-', true) }}</td><td>{{ a.encoding|default('-', true) }}</td><td class="mono">{{ a.value|default('-', true) }}</td></tr>
+          {% endfor %}
+          {% if not triage_v2.config_artifacts %}<tr><td colspan="3">No embedded config artifacts.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Triage Findings with Evidence</h2>
+      <table>
+        <thead><tr><th>Finding</th><th>Supporting Evidence</th></tr></thead>
+        <tbody>
+          {% for row in triage_v2.finding_rows|default([], true) %}
+          <tr>
+            <td>{{ row.finding }}</td>
+            <td class="mono">{% for ev in row.evidence|default([], true) %}{{ ev }}{% if not loop.last %}<br/>{% endif %}{% endfor %}</td>
+          </tr>
+          {% endfor %}
+          {% if not triage_v2.finding_rows %}<tr><td colspan="2">No triage findings.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Entropy Heatmap (sample)</h2>
+      <table>
+        <thead><tr><th>Offset</th><th>Size</th><th>Entropy</th></tr></thead>
+        <tbody>
+          {% for h in (triage_v2.entropy_heatmap|default([], true))[:128] %}
+          <tr><td class="mono">{{ h.offset }}</td><td>{{ h.size }}</td><td>{{ h.entropy }}</td></tr>
+          {% endfor %}
+          {% if not triage_v2.entropy_heatmap %}<tr><td colspan="3">No entropy heatmap data.</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <h2>Analyst Interpretation</h2>
+      <ul>
+        {% for line in analyst_interpretation|default([], true) %}<li>{{ line }}</li>{% endfor %}
+        {% if not analyst_interpretation %}<li>No interpretation notes.</li>{% endif %}
+      </ul>
+      {% endif %}
+
+      <h2>Sections</h2>
+      <table>
+        <thead><tr><th>Name</th><th>VA</th><th>Raw Size</th><th>Virtual Size</th><th>Characteristics</th><th>Executable</th><th>Entropy</th></tr></thead>
+        <tbody>
+          {% for s in sections|default([], true) %}
+          <tr>
+            <td class="mono">{{ s.name }}</td><td class="mono">{{ s.va }}</td><td>{{ s.raw_size }}</td><td>{{ s.virtual_size }}</td>
+            <td class="mono">{{ s.characteristics }}</td><td>{{ 'Y' if s.executable else 'N' }}</td>
+            <td>{{ s.entropy }}{% if s.entropy|float >= 7.2 %} <span class="muted">(high)</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Imports</h2>
+      <table>
+        <thead><tr><th>DLL</th><th>Imported APIs</th></tr></thead>
+        <tbody>
+          {% for row in import_rows|default([], true) %}
+          <tr><td class="mono">{{ row.dll }}</td><td class="mono">{{ row.apis|join(', ') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Exports</h2>
+      <table>
+        <thead><tr><th>VA</th><th>Name</th></tr></thead>
+        <tbody>
+          {% for e in exports|default([], true) %}<tr><td class="mono">{{ e.va|default('-', true) }}</td><td>{{ e.name|default('-', true) }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Resources</h2>
+      <div class="code-block">Manifest: {{ resources.manifest|default([], true) }}
+Version Info: {{ resources.version_info|default({}, true) }}</div>
+
+      <h2>Risk Findings</h2>
+      <table>
+        <thead><tr><th>VA</th><th>Name</th><th>Score</th><th>Reason</th></tr></thead>
+        <tbody>
+          {% for r in risk_top|default([], true) %}
+          <tr><td class="mono">{{ r.va }}</td><td>{{ r.name }}</td><td>{{ r.score }}</td><td>{{ r.reason }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Packer / Obfuscation</h2>
+      <div class="code-block">Score: {{ packer.score }}
+Reasons: {{ packer.reasons }}
+Hints: {{ packer.hints }}</div>
+
+      <h2>OEP Disassembly Preview</h2>
+      <div class="code-block">{% if oep_preview %}{% for line in oep_preview %}{{ line }}
+{% endfor %}{% else %}No OEP disassembly preview available.{% endif %}</div>
+
+      <h2>Strings (sample)</h2>
+      <table>
+        <thead><tr><th>VA</th><th>RVA</th><th>File Offset</th><th>Encoding</th><th>Text</th></tr></thead>
+        <tbody>
+          {% for s in (strings|default([], true))[:200] %}
+          <tr><td class="mono">{{ s.va }}</td><td class="mono">{{ s.rva }}</td><td class="mono">{{ s.file_off }}</td><td>{{ s.encoding }}</td><td>{{ s.text }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Notes</h2>
+      <ul>{% for n in notes|default([], true) %}<li>{{ n }}</li>{% endfor %}{% if not notes %}<li>No additional notes.</li>{% endif %}</ul>
+
+      {% if xrefs_summary %}
+      <h2>XREF Summary</h2>
+      <div class="code-block">Top called functions: {{ xrefs_summary.top_called_functions|default([], true) }}
+Suspicious API references: {{ xrefs_summary.suspicious_api_references|default([], true) }}
+Strings with references: {{ xrefs_summary.strings_with_references|default([], true) }}
+Unresolved indirect calls: {{ xrefs_summary.unresolved_indirect_calls|default(0, true) }}
+Limitations: {{ xrefs_summary.limitations|default('-', true) }}</div>
+      {% endif %}
+      {% if function_intelligence_summary %}
+      <h2>Function Intelligence Summary</h2>
+      <h3>Top Risky Functions</h3>
+      <table>
+        <thead><tr><th>Start</th><th>Indicators</th><th>Suspicious APIs</th><th>Inbound Xrefs</th></tr></thead>
+        <tbody>
+          {% for f in function_intelligence_summary.top_risky_functions|default([], true) %}
+          <tr>
+            <td class="mono">{{ f.start }}</td>
+            <td>{{ f.risk_indicators|default([], true)|join(', ') }}</td>
+            <td class="mono">{{ f.suspicious_api_usage|default([], true)|join(', ') }}</td>
+            <td>{{ f.inbound_xrefs|default(0, true) }}</td>
+          </tr>
+          {% endfor %}
+          {% if not function_intelligence_summary.top_risky_functions %}<tr><td colspan="4">No risky function rows.</td></tr>{% endif %}
+        </tbody>
+      </table>
+      <div class="code-block">Functions with suspicious APIs: {{ function_intelligence_summary.functions_with_suspicious_apis|default([], true) }}
+Functions with interesting strings: {{ function_intelligence_summary.functions_with_interesting_strings|default([], true) }}
+Analyst renamed functions: {{ function_intelligence_summary.analyst_renamed_functions|default([], true) }}
+Commented/bookmarked functions: {{ function_intelligence_summary.commented_or_bookmarked_functions|default([], true) }}</div>
+      {% endif %}
+      {% if behavior_summaries_top %}
+      <h2>Behavioral Function Summaries (Heuristic)</h2>
+      {% for b in behavior_summaries_top %}
+      <h3>{{ b.function_address|default('-', true) }} — {{ b.short_behavior_summary|default('No summary', true) }}</h3>
+      <div class="code-block">Confidence: {{ b.confidence|default('low', true) }}
+Possible capability tags: {{ b.possible_capability_tags|default([], true) }}</div>
+      <ul>
+        {% for e in b.evidence_bullets|default([], true) %}<li>{{ e }}</li>{% endfor %}
+        {% if not b.evidence_bullets %}<li>No explicit evidence captured.</li>{% endif %}
+      </ul>
+      <div class="code-block">Caveats: {{ b.caveats|default([], true) }}</div>
+      {% endfor %}
+      {% endif %}
+      {% if call_graph_summary %}
+      <h2>Call Graph Intelligence (Heuristic)</h2>
+      <div class="code-block">Entry-point reachable functions: {{ call_graph_summary.entry_reachable_functions|default([], true)|length }}
+Isolated/unreferenced functions: {{ call_graph_summary.isolated_or_unreferenced_functions|default([], true)|length }}
+Note: {{ call_graph_summary.heuristic_note|default('-', true) }}</div>
+      <h3>Top Hub Functions</h3>
+      <table>
+        <thead><tr><th>Address</th><th>Inbound</th><th>Outbound</th><th>Suspicious</th></tr></thead>
+        <tbody>
+          {% for h in call_graph_summary.top_hub_functions|default([], true) %}
+          <tr><td class="mono">{{ h.address }}</td><td>{{ h.inbound_degree }}</td><td>{{ h.outbound_degree }}</td><td>{{ h.suspicious }}</td></tr>
+          {% endfor %}
+          {% if not call_graph_summary.top_hub_functions %}<tr><td colspan="4">No hub data.</td></tr>{% endif %}
+        </tbody>
+      </table>
+      <h3>Suspicious Call Chains</h3>
+      <ul>
+        {% for c in call_graph_summary.suspicious_call_chains|default([], true) %}
+        <li class="mono">{{ c.chain|join(' -> ') }} ({{ c.reason }}, confidence={{ c.confidence }})</li>
+        {% endfor %}
+        {% if not call_graph_summary.suspicious_call_chains %}<li>No suspicious chains identified.</li>{% endif %}
+      </ul>
+      <h3>Suspicious API Bridge Functions</h3>
+      <ul>
+        {% for b in call_graph_summary.suspicious_api_bridge_functions|default([], true) %}
+        <li class="mono">{{ b.address }} inbound={{ b.inbound_degree }} apis={{ b.suspicious_apis|join(', ') }}</li>
+        {% endfor %}
+        {% if not call_graph_summary.suspicious_api_bridge_functions %}<li>No bridge functions identified.</li>{% endif %}
+      </ul>
+      <h3>Isolated/Unreferenced Functions</h3>
+      <div class="code-block">{{ call_graph_summary.isolated_or_unreferenced_functions|default([], true) }}</div>
+      {% endif %}
+      {% if cfg_intel_high_value %}
+      <h2>CFG Intelligence (Heuristic)</h2>
+      {% for c in cfg_intel_high_value %}
+      <h3>{{ c.address }}</h3>
+      <div class="code-block">Basic blocks: {{ c.analysis.basic_block_count|default(0, true) }}
+Branches: {{ c.analysis.branch_count|default(0, true) }}
+Branch density: {{ c.analysis.branch_density|default(0, true) }}
+Unresolved edges: {{ c.analysis.unresolved_edge_count|default(0, true) }}
+High branch density: {{ c.analysis.abnormal_high_branch_density|default(false, true) }}</div>
+      <ul>
+        {% if c.analysis.loop_back_edge_hints %}<li>Loops/back-edges (possible): {{ c.analysis.loop_back_edge_hints }}</li>{% endif %}
+        {% if c.analysis.possible_opaque_predicate_hints %}<li>Possible opaque predicates: {{ c.analysis.possible_opaque_predicate_hints }}</li>{% endif %}
+        {% if c.analysis.unreachable_block_hints %}<li>Unreachable blocks (possible): {{ c.analysis.unreachable_block_hints }}</li>{% endif %}
+        {% if c.analysis.unresolved_edge_count|default(0, true) > 0 %}<li>Unresolved edges present in CFG.</li>{% endif %}
+      </ul>
+      {% endfor %}
+      {% endif %}
+      {% if naming_suggestions_high or analyst_artifacts.renamed_functions %}
+      <h2>Symbol &amp; Naming Intelligence</h2>
+      <h3>Analyst-Renamed Functions</h3>
+      <div class="code-block">{{ analyst_artifacts.renamed_functions|default({}, true) }}</div>
+      <h3>High-Confidence Suggested Names</h3>
+      {% for n in naming_suggestions_high|default([], true) %}
+      <h4>{{ n.address|default('-', true) }} → {{ n.suggested_name|default('-', true) }} ({{ n.confidence|default('low', true) }})</h4>
+      <ul>
+        {% for e in n.evidence_bullets|default([], true) %}<li>{{ e }}</li>{% endfor %}
+        {% if not n.evidence_bullets %}<li>No evidence bullets.</li>{% endif %}
+      </ul>
+      <div class="code-block">Caveats: {{ n.caveats|default([], true) }}</div>
+      {% endfor %}
+      {% if not naming_suggestions_high %}<div class="code-block">No high-confidence suggested names.</div>{% endif %}
+      {% endif %}
+      {% if data_flow_insights_high %}
+      <h2>Data Flow Insights (Heuristic)</h2>
+      <ul>
+        {% for d in data_flow_insights_high %}
+        <li class="mono">{{ d.address }} | {{ d.type|default('finding', true) }} | api={{ d.api|default('-', true) }} | call_site={{ d.call_site|default('-', true) }} | estimated={{ d.estimated|default(true, true) }} | evidence={{ d.evidence|default('-', true) }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if api_semantics_high %}
+      <h2>API Semantics Intelligence (Heuristic)</h2>
+      <ul>
+        {% for a in api_semantics_high %}
+        <li class="mono">{{ a.address }} | {{ a.api }} @ {{ a.call_site }} | tags={{ a.capability_tags|default([], true) }} | args={{ a.interpreted_arguments|default([], true) }} | evidence={{ a.evidence|default('-', true) }} | confidence={{ a.confidence|default('medium', true) }} | estimated={{ a.estimated|default(true, true) }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if behavior_patterns_high %}
+      <h2>Behavior Pattern Detection (High Confidence Candidates)</h2>
+      {% for p in behavior_patterns_high %}
+      <h3>{{ p.pattern|default('unknown', true) }} ({{ p.confidence|default('medium', true) }}, {{ p.scope|default('per-function', true) }})</h3>
+      <div class="code-block">Functions involved: {{ p.involved_functions|default([], true) }}</div>
+      <ul>
+        {% for e in p.evidence_chain|default([], true) %}<li class="mono">{{ e }}</li>{% endfor %}
+        {% if not p.evidence_chain %}<li>No evidence chain available.</li>{% endif %}
+      </ul>
+      <div class="code-block">Caveats: {{ p.caveats|default([], true) }}</div>
+      {% endfor %}
+      {% endif %}
+      <h2>Analyst Notes</h2>
+      <div class="code-block">{{ case.analyst_notes or 'N/A' }}</div>
+
+      {% if analyst_artifacts %}
+      <h2>Analyst Workspace Artifacts</h2>
+      <div class="code-block">Renamed Functions: {{ analyst_artifacts.renamed_functions|default({}, true) }}
+Comments: {{ analyst_artifacts.comments|default({}, true) }}
+Labels: {{ analyst_artifacts.labels|default({}, true) }}
+Bookmarks: {{ analyst_artifacts.bookmarks|default([], true) }}</div>
+      {% endif %}
+
+      <h2>Conclusions</h2>
+      <ul>
+        {% for c in conclusions|default([], true) %}<li>{{ c }}</li>{% endfor %}
+        {% if not conclusions %}<li>No conclusions recorded.</li>{% endif %}
+      </ul>
+
+      <h2>Recommendations</h2>
+      <ul>
+        {% for r in recommendations|default([], true) %}<li>{{ r }}</li>{% endfor %}
+        {% if not recommendations %}<li>No recommendations recorded.</li>{% endif %}
+      </ul>
+    </div>
+    <div class="footer">Erevos Report | Schema {{ schema_version }} | Page 1</div>
+  </div>
+</body>
+</html>
