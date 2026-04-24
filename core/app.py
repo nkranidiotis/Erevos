@@ -2,12 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QMainWindow, QFileDialog,
     QListWidget, QTabWidget, QTextEdit, QLabel, QSplitter, QToolBar, QStatusBar,
     QLineEdit, QMessageBox, QMenuBar, QStyle, QPlainTextEdit, QInputDialog,
-    QListWidgetItem, QCheckBox, QSpinBox,
+    QListWidgetItem, QCheckBox, QSpinBox, QPushButton, QStackedWidget, QGridLayout,
     QGraphicsView, QGraphicsScene, QGraphicsTextItem, QMenu, QGraphicsProxyWidget, QFrame 
 )
 from PyQt6.QtGui import (
     QKeySequence, QFont, QAction, QColor, QTextCursor, QTextCharFormat,
-    QPainter, QFontMetrics, QPen, QBrush, QMouseEvent
+    QPainter, QFontMetrics, QPen, QBrush, QMouseEvent, QPixmap
 )
 from PyQt6.QtCore import Qt, QSize, QPointF, QRectF
 from pathlib import Path
@@ -331,6 +331,188 @@ class CfgGraphView(QGraphicsView):
                 break
         super().mousePressEvent(ev)
 
+
+class SkullLogo(QWidget):
+    def __init__(self, size=36, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(size, size)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+        logo_path = Path(__file__).resolve().parents[1] / "ui" / "logo.png"
+        if logo_path.exists():
+            pix = QPixmap(str(logo_path)).scaled(
+                w, h,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            p.drawPixmap((w - pix.width()) // 2, (h - pix.height()) // 2, pix)
+            return
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1f2d3a"))
+        p.drawEllipse(0, 0, w, h)
+
+
+class _Card(QFrame):
+    def __init__(self, title: str, parent=None):
+        super().__init__(parent)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(8, 8, 8, 8)
+        if title:
+            t = QLabel(title)
+            t.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
+            lay.addWidget(t)
+        self.body = QVBoxLayout()
+        self.body.setContentsMargins(0, 0, 0, 0)
+        lay.addLayout(self.body)
+
+    def addWidget(self, w: QWidget, stretch: int = 0):
+        self.body.addWidget(w, stretch)
+
+
+class _TopBar(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(8, 8, 8, 8)
+        lay.addWidget(SkullLogo(28))
+        lay.addWidget(QLabel("Erevos"))
+        lay.addStretch(1)
+        open_btn = QPushButton("Open")
+        open_btn.clicked.connect(mw.action_open)
+        lay.addWidget(open_btn)
+
+
+class _DashboardPage(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        lay = QVBoxLayout(self)
+        c1 = _Card("Critical Risk")
+        mw.critical_risk = QTextEdit()
+        mw.critical_risk.setReadOnly(True)
+        mw.critical_risk.setFont(QFont("Consolas", 10))
+        c1.addWidget(mw.critical_risk)
+        lay.addWidget(c1, 1)
+        c2 = _Card("Threat Narrative")
+        mw.threat_narrative_view = QTextEdit()
+        mw.threat_narrative_view.setReadOnly(True)
+        mw.threat_narrative_view.setFont(QFont("Consolas", 10))
+        c2.addWidget(mw.threat_narrative_view)
+        lay.addWidget(c2, 1)
+
+
+class _ErevosViewPage(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        root = QHBoxLayout(self)
+        left = _Card("Functions")
+        mw.func_list = QListWidget()
+        mw.func_list.setFont(QFont("Consolas", 10))
+        mw.func_list.itemClicked.connect(mw.on_func_selected)
+        mw.func_list.itemDoubleClicked.connect(mw.on_func_double_clicked)
+        mw.func_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        mw.func_list.customContextMenuRequested.connect(mw.on_func_context_menu)
+        left.addWidget(mw.func_list, 1)
+        mw.func_search_box = QLineEdit()
+        mw.func_search_box.setPlaceholderText("Filter functions (address or name)...")
+        mw.func_search_box.textChanged.connect(mw.filter_functions)
+        left.addWidget(mw.func_search_box)
+        root.addWidget(left, 1)
+
+        center = QVBoxLayout()
+        dis = _Card("Disassembly (ASM)")
+        mw.asm_view = QTextEdit()
+        mw.asm_view.setReadOnly(True)
+        mw.asm_view.setFont(QFont("Consolas", 10))
+        mw.asm_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        mw.asm_view.customContextMenuRequested.connect(mw.on_asm_context_menu)
+        if attach_highlighter:
+            mw.asm_highlighter = attach_highlighter(mw.asm_view)
+        dis.addWidget(mw.asm_view, 1)
+        center.addWidget(dis, 2)
+        det = _Card("Function Details")
+        mw.function_details_view = QTextEdit()
+        mw.function_details_view.setReadOnly(True)
+        mw.function_details_view.setFont(QFont("Consolas", 10))
+        det.addWidget(mw.function_details_view, 1)
+        center.addWidget(det, 1)
+        root.addLayout(center, 2)
+
+
+class _AnalysisPage(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        lay = QVBoxLayout(self)
+        c1 = _Card("Erevos View")
+        mw.erevos_view = FunctionBoxView()
+        c1.addWidget(mw.erevos_view, 1)
+        lay.addWidget(c1, 2)
+        row = QHBoxLayout()
+        c2 = _Card("Resources")
+        mw.resources_view = QTextEdit()
+        mw.resources_view.setReadOnly(True)
+        mw.resources_view.setFont(QFont("Consolas", 10))
+        c2.addWidget(mw.resources_view, 1)
+        row.addWidget(c2, 1)
+        c3 = _Card("Console")
+        mw.console_bar = QPlainTextEdit()
+        mw.console_bar.setObjectName("Console")
+        mw.console_bar.setReadOnly(True)
+        mw.console_bar.setFont(QFont("Consolas", 10))
+        c3.addWidget(mw.console_bar, 1)
+        row.addWidget(c3, 1)
+        lay.addLayout(row, 1)
+
+
+class _HexViewPage(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        lay = QGridLayout(self)
+        cards = []
+        for title in ("Hex View", "Imports", "Strings", "Bookmarks"):
+            c = _Card(title)
+            cards.append(c)
+        mw.hex_view = QTextEdit(); mw.hex_view.setReadOnly(True); mw.hex_view.setFont(QFont("Consolas", 10))
+        mw.hex_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        mw.hex_view.customContextMenuRequested.connect(mw.on_asm_context_menu)
+        cards[0].addWidget(mw.hex_view, 1)
+        mw.imports_view = QTextEdit(); mw.imports_view.setReadOnly(True); mw.imports_view.setFont(QFont("Consolas", 10))
+        mw.imports_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        mw.imports_view.customContextMenuRequested.connect(mw.on_import_context_menu)
+        cards[1].addWidget(mw.imports_view, 1)
+        mw.str_view = QTextEdit(); mw.str_view.setReadOnly(True); mw.str_view.setFont(QFont("Consolas", 10))
+        mw.str_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        mw.str_view.customContextMenuRequested.connect(mw.on_string_context_menu)
+        mw.str_view.mouseDoubleClickEvent = lambda ev: (mw._show_string_usage_from_cursor(), QTextEdit.mouseDoubleClickEvent(mw.str_view, ev))
+        cards[2].addWidget(mw.str_view, 1)
+        mw.bookmarks_view = QListWidget(); mw.bookmarks_view.setFont(QFont("Consolas", 10))
+        mw.bookmarks_view.itemDoubleClicked.connect(mw.on_bookmark_double_clicked)
+        cards[3].addWidget(mw.bookmarks_view, 1)
+        lay.addWidget(cards[0], 0, 0)
+        lay.addWidget(cards[1], 0, 1)
+        lay.addWidget(cards[2], 1, 0)
+        lay.addWidget(cards[3], 1, 1)
+
+
+class _CFGPage(QWidget):
+    def __init__(self, mw: "MainWindow"):
+        super().__init__(mw)
+        lay = QVBoxLayout(self)
+        c1 = _Card("CFG Graph")
+        mw.cfg_graph = CfgGraphView()
+        c1.addWidget(mw.cfg_graph, 1)
+        lay.addWidget(c1, 2)
+        c2 = _Card("CFG Intelligence")
+        mw.cfg_intel_view = QTextEdit()
+        mw.cfg_intel_view.setReadOnly(True)
+        mw.cfg_intel_view.setFont(QFont("Consolas", 10))
+        mw.cfg_intel_view.mouseDoubleClickEvent = lambda ev: (mw._goto_va_from_cursor(mw.cfg_intel_view), QTextEdit.mouseDoubleClickEvent(mw.cfg_intel_view, ev))
+        c2.addWidget(mw.cfg_intel_view, 1)
+        lay.addWidget(c2, 1)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -367,32 +549,10 @@ class MainWindow(QMainWindow):
         self._create_menu()
         self._create_toolbar()
 
-        # Split layout: left (functions) and right (tabs)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(6)
-
-        # Left panel
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(6, 6, 6, 6)
-        left_layout.setSpacing(6)
+        # Build pages with dependency injection (pages instantiate backend-owned widgets).
         self.functions_label = QLabel("Functions")
         self.functions_label.setFont(QFont("Consolas", 11, QFont.Weight.Bold))
         self.functions_label.setObjectName("FunctionsHeader")
-        left_layout.addWidget(self.functions_label)
-        self.func_list = QListWidget()
-        self.func_list.setFont(QFont("Consolas", 10))
-        self.func_list.itemClicked.connect(self.on_func_selected)
-        self.func_list.itemDoubleClicked.connect(self.on_func_double_clicked)
-        self.func_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.func_list.customContextMenuRequested.connect(self.on_func_context_menu)
-        left_layout.addWidget(self.func_list)
-        # search box
-        search_box = QLineEdit()
-        search_box.setPlaceholderText("Filter functions (address or name)...")
-        search_box.textChanged.connect(self.filter_functions)
-        self.func_search_box = search_box
-        left_layout.addWidget(search_box)
         self.filter_renamed = QCheckBox("Renamed")
         self.filter_commented = QCheckBox("Commented")
         self.filter_bookmarked = QCheckBox("Bookmarked")
@@ -412,137 +572,59 @@ class MainWindow(QMainWindow):
             w.stateChanged.connect(self.filter_functions)
         self.filter_inbound_spin.valueChanged.connect(self.filter_functions)
         self.filter_ref_string.textChanged.connect(self.filter_functions)
-        left_layout.addWidget(self.filter_renamed)
-        left_layout.addWidget(self.filter_commented)
-        left_layout.addWidget(self.filter_bookmarked)
-        left_layout.addWidget(self.filter_suspicious)
-        left_layout.addWidget(self.filter_inbound_spin)
-        left_layout.addWidget(self.filter_ref_string)
-        splitter.addWidget(left_panel)
-        splitter.setStretchFactor(0, 0)
-
-        # Right panel - tabs
-        right_panel = QWidget()
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(6, 6, 6, 6)
-        right_layout.setSpacing(6)
-
-        self.tabs = QTabWidget()
-        # New: Erevos View (zoomable function box)
-        self.erevos_view = FunctionBoxView()
-        self.erevos_view.setObjectName("ErevosView")
-
-        # ASM view (full .text disassembly)
-        self.asm_view = QTextEdit()
-        self.asm_view.setReadOnly(True)
-        self.asm_view.setFont(QFont("Consolas", 10))
-        self.asm_view.setObjectName("AsmView")
-        if attach_highlighter:
-            self.asm_highlighter = attach_highlighter(self.asm_view)
-
-        self.hex_view = QTextEdit(); self.hex_view.setReadOnly(True); self.hex_view.setFont(QFont("Consolas", 10))
-        self.hex_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.hex_view.customContextMenuRequested.connect(self.on_asm_context_menu)
-        self.str_view = QTextEdit(); self.str_view.setReadOnly(True); self.str_view.setFont(QFont("Consolas", 10))
         self.imports_view = QTextEdit(); self.imports_view.setReadOnly(True); self.imports_view.setFont(QFont("Consolas", 10))
         self.exports_view = QTextEdit(); self.exports_view.setReadOnly(True); self.exports_view.setFont(QFont("Consolas", 10))
-        self.imports_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.imports_view.customContextMenuRequested.connect(self.on_import_context_menu)
-        self.str_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.str_view.customContextMenuRequested.connect(self.on_string_context_menu)
-        self.str_view.mouseDoubleClickEvent = lambda ev: (
-            self._show_string_usage_from_cursor(),
-            QTextEdit.mouseDoubleClickEvent(self.str_view, ev)
-        )
-
-        # Critical -> two sub-tabs (Risk + Hot)
-        self.critical_tabs = QTabWidget()
-        self.critical_risk = QTextEdit(); self.critical_risk.setReadOnly(True); self.critical_risk.setFont(QFont("Consolas", 10))
         self.critical_hot = QTextEdit(); self.critical_hot.setReadOnly(True); self.critical_hot.setFont(QFont("Consolas", 10))
-        self.critical_tabs.addTab(self.critical_risk, "Risk (scores)")
-        self.critical_tabs.addTab(self.critical_hot, "Hot (raw)")
-        # Double-click to jump from risk/hot lines
-        self.critical_risk.mouseDoubleClickEvent = lambda ev: (
-            self._goto_va_from_cursor(self.critical_risk),
-            QTextEdit.mouseDoubleClickEvent(self.critical_risk, ev)
-        )
-        self.critical_hot.mouseDoubleClickEvent = lambda ev: (
-            self._goto_va_from_cursor(self.critical_hot),
-            QTextEdit.mouseDoubleClickEvent(self.critical_hot, ev)
-        )
+        self.xrefs_to_view = QListWidget(); self.xrefs_to_view.setFont(QFont("Consolas", 10)); self.xrefs_to_view.itemDoubleClicked.connect(self.on_xref_item_double_clicked)
+        self.xrefs_from_view = QListWidget(); self.xrefs_from_view.setFont(QFont("Consolas", 10)); self.xrefs_from_view.itemDoubleClicked.connect(self.on_xref_item_double_clicked)
+        self.call_graph_view = QListWidget(); self.call_graph_view.setFont(QFont("Consolas", 10)); self.call_graph_view.itemDoubleClicked.connect(self.on_call_graph_item_double_clicked)
 
-        # Resources & CFG (text placeholder for now)
-        self.resources_view = QTextEdit(); self.resources_view.setReadOnly(True); self.resources_view.setFont(QFont("Consolas", 10))
-        self.cfg_graph = CfgGraphView()
-        self.cfg_intel_view = QTextEdit()
-        self.cfg_intel_view.setReadOnly(True)
-        self.cfg_intel_view.setFont(QFont("Consolas", 10))
-        self.cfg_intel_view.mouseDoubleClickEvent = lambda ev: (
-            self._goto_va_from_cursor(self.cfg_intel_view),
-            QTextEdit.mouseDoubleClickEvent(self.cfg_intel_view, ev)
-        )
-        self.cfg_panel = QWidget()
-        cfg_layout = QVBoxLayout(self.cfg_panel)
-        cfg_layout.setContentsMargins(0, 0, 0, 0)
-        cfg_layout.setSpacing(4)
-        cfg_layout.addWidget(self.cfg_graph, 3)
-        cfg_layout.addWidget(self.cfg_intel_view, 2)
-        self.bookmarks_view = QListWidget()
-        self.bookmarks_view.setFont(QFont("Consolas", 10))
-        self.bookmarks_view.itemDoubleClicked.connect(self.on_bookmark_double_clicked)
-        self.xrefs_to_view = QListWidget()
-        self.xrefs_to_view.setFont(QFont("Consolas", 10))
-        self.xrefs_to_view.itemDoubleClicked.connect(self.on_xref_item_double_clicked)
-        self.xrefs_from_view = QListWidget()
-        self.xrefs_from_view.setFont(QFont("Consolas", 10))
-        self.xrefs_from_view.itemDoubleClicked.connect(self.on_xref_item_double_clicked)
-        self.call_graph_view = QListWidget()
-        self.call_graph_view.setFont(QFont("Consolas", 10))
-        self.call_graph_view.itemDoubleClicked.connect(self.on_call_graph_item_double_clicked)
-        self.function_details_view = QTextEdit()
-        self.function_details_view.setReadOnly(True)
-        self.function_details_view.setFont(QFont("Consolas", 10))
-        self.threat_narrative_view = QTextEdit()
-        self.threat_narrative_view.setReadOnly(True)
-        self.threat_narrative_view.setFont(QFont("Consolas", 10))
+        self.stack = QStackedWidget()
+        self.tabs = self.stack  # compatibility alias for existing setCurrentWidget calls
 
-        # Tab order
-        self.tabs.addTab(self.erevos_view, "Erevos View")
-        self.tabs.addTab(self.asm_view, "Disassembly (ASM)")
-        self.tabs.addTab(self.hex_view, "Hex View")
-        self.tabs.addTab(self.str_view, "Strings")
-        self.tabs.addTab(self.imports_view, "Imports")
-        self.tabs.addTab(self.exports_view, "Exports")
-        self.tabs.addTab(self.critical_tabs, "Critical")
-        self.tabs.addTab(self.resources_view, "Resources")
-        self.tabs.addTab(self.bookmarks_view, "Bookmarks")
-        self.tabs.addTab(self.xrefs_to_view, "Xrefs To")
-        self.tabs.addTab(self.xrefs_from_view, "Xrefs From")
-        self.tabs.addTab(self.call_graph_view, "Call Graph")
-        self.tabs.addTab(self.function_details_view, "Function Details")
-        self.tabs.addTab(self.threat_narrative_view, "Threat Narrative")
-        self.tabs.addTab(self.cfg_panel, "CFG")
+        self.page_dashboard = _DashboardPage(self)
+        self.page_erevos = _ErevosViewPage(self)
+        self.page_analysis = _AnalysisPage(self)
+        self.page_hex = _HexViewPage(self)
+        self.page_cfg = _CFGPage(self)
 
-        self.asm_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.asm_view.customContextMenuRequested.connect(self.on_asm_context_menu)
+        aux = QWidget()
+        aux_l = QVBoxLayout(aux)
+        aux_l.addWidget(self.imports_view)
+        aux_l.addWidget(self.exports_view)
+        aux_l.addWidget(self.xrefs_to_view)
+        aux_l.addWidget(self.xrefs_from_view)
+        aux_l.addWidget(self.call_graph_view)
+        aux_l.addWidget(self.critical_hot)
 
-        right_layout.addWidget(self.tabs)
-        splitter.addWidget(right_panel)
-        splitter.setStretchFactor(1, 1)
+        for w in (self.page_dashboard, self.page_erevos, self.page_analysis, self.page_hex, self.page_cfg, aux):
+            self.stack.addWidget(w)
 
-        # Console / output pane at bottom
-        self.console_bar = QPlainTextEdit(); self.console_bar.setObjectName("Console")
-        self.console_bar.setReadOnly(True)
-        self.console_bar.setFixedHeight(150)
-        self.console_bar.setFont(QFont("Consolas", 10))
-        # Add splitter vertical stacking
-        vsplit = QSplitter(Qt.Orientation.Vertical)
-        top_widget = QWidget(); top_layout = QVBoxLayout(top_widget)
-        top_layout.setContentsMargins(0, 0, 0, 0); top_layout.addWidget(splitter)
-        vsplit.addWidget(top_widget); vsplit.addWidget(self.console_bar)
-        vsplit.setStretchFactor(0, 8); vsplit.setStretchFactor(1, 0)
+        nav = QWidget()
+        nav_l = QVBoxLayout(nav)
+        for title, page in [
+            ("Dashboard", self.page_dashboard),
+            ("Erevos", self.page_erevos),
+            ("Analysis", self.page_analysis),
+            ("Hex/IO", self.page_hex),
+            ("CFG", self.page_cfg),
+        ]:
+            b = QPushButton(title)
+            b.clicked.connect(lambda _, p=page: self.stack.setCurrentWidget(p))
+            nav_l.addWidget(b)
+        nav_l.addStretch(1)
+        nav_l.addWidget(self.filter_renamed)
+        nav_l.addWidget(self.filter_commented)
+        nav_l.addWidget(self.filter_bookmarked)
+        nav_l.addWidget(self.filter_suspicious)
+        nav_l.addWidget(self.filter_inbound_spin)
+        nav_l.addWidget(self.filter_ref_string)
 
-        main.addWidget(vsplit)
+        body = QHBoxLayout()
+        body.addWidget(nav, 0)
+        body.addWidget(self.stack, 1)
+        main.addWidget(_TopBar(self), 0)
+        main.addLayout(body, 1)
 
         # Status bar
         self.status = QStatusBar(); self.setStatusBar(self.status)
@@ -730,8 +812,7 @@ class MainWindow(QMainWindow):
             if res.get("hints"):
                 txt.append("Hints: " + ", ".join(res["hints"]))
             self.critical_risk.setPlainText("\n".join(txt))
-            self.tabs.setCurrentWidget(self.critical_tabs)
-            self.critical_tabs.setCurrentWidget(self.critical_risk)
+            self.tabs.setCurrentWidget(self.page_dashboard)
         except Exception as e:
             QMessageBox.critical(self, "Packer error", str(e))
 
@@ -1122,6 +1203,672 @@ class MainWindow(QMainWindow):
             self._update_data_flow_for_function(va)
         except Exception as e:
             self.console(f"Erevos view error: {e}")
+
+    # ----------------- Analyst workspace features -----------------
+    def _display_func_name(self, va: int, fallback: str) -> str:
+        return self.session.renamed_functions.get(f"0x{va:08X}", fallback)
+
+    def _rebuild_xrefs(self):
+        try:
+            text = self.asm_view.toPlainText()
+            strings_map = {}
+            if extract_strings_with_locations and self.disasm:
+                try:
+                    hits = extract_strings_with_locations(self.disasm.pe, min_len=4, limit=5000)
+                    strings_map = {int(h.va): h.text for h in hits}
+                except Exception:
+                    strings_map = {}
+            imports = self.disasm.get_imports() if self.disasm else []
+            self._xrefs = extract_structured_xrefs(text, functions=getattr(self, "_functions", {}), strings_by_addr=strings_map, imports=imports)
+            self._xrefs_summary = summarize_xrefs(self._xrefs)
+        except Exception as e:
+            self._xrefs = []
+            self._xrefs_summary = {"error": str(e)}
+
+    def _rebuild_function_intelligence(self):
+        try:
+            disasm_text = self.asm_view.toPlainText()
+            self._function_profiles = build_function_profiles(
+                disasm_text=disasm_text,
+                functions=getattr(self, "_functions", {}),
+                xrefs=getattr(self, "_xrefs", []),
+                comments=self.session.comments,
+                labels=self.session.labels,
+                bookmarks=self.session.bookmarks,
+            )
+            self._function_intel_summary = normalize_function_intel_summary(summarize_function_intelligence(
+                self._function_profiles, self.session.renamed_functions
+            ))
+            self._behavior_summaries = generate_all_behavior_summaries(self._function_profiles)
+            self.session.function_intel_summary = self._function_intel_summary
+            self.session.behavior_summaries = self._behavior_summaries
+        except Exception as e:
+            self._function_profiles = {}
+            self._function_intel_summary = {"error": str(e)}
+            self._behavior_summaries = {}
+
+    def _rebuild_call_graph(self):
+        try:
+            self._call_graph_model = build_call_graph_model(
+                profiles=getattr(self, "_function_profiles", {}),
+                xrefs=getattr(self, "_xrefs", []),
+            )
+            ep = self.disasm.get_entry_point() if self.disasm else None
+            self._call_graph_summary = analyze_call_graph(self._call_graph_model, entry_point=ep)
+            self.session.call_graph_summary = self._call_graph_summary
+            self._refresh_call_graph_panel()
+            self._rebuild_behavior_patterns()
+            self._rebuild_threat_narrative()
+        except Exception as e:
+            self._call_graph_model = {}
+            self._call_graph_summary = {"error": str(e)}
+            self.call_graph_view.clear()
+            self.call_graph_view.addItem(f"Call graph error: {e}")
+
+    def _refresh_call_graph_panel(self):
+        self.call_graph_view.clear()
+        if not self._call_graph_summary:
+            self.call_graph_view.addItem("No call graph summary available.")
+            return
+        for row in (self._call_graph_summary.get("top_hub_functions") or [])[:20]:
+            mark = " [SUSP]" if row.get("suspicious") else ""
+            self.call_graph_view.addItem(
+                f"HUB {row.get('address')} in={row.get('inbound_degree',0)} out={row.get('outbound_degree',0)}{mark}"
+            )
+        for edge in (self._call_graph_model.get("edges") or [])[:80]:
+            mark = " [SUSP]" if edge.get("suspicious_indicator") else ""
+            self.call_graph_view.addItem(
+                f"EDGE {edge.get('caller')} -> {edge.get('callee')} calls={edge.get('call_count',0)} conf={edge.get('confidence','?')}{mark}"
+            )
+
+    def _update_cfg_intel_for_function(self, va: int):
+        try:
+            asm = self._disasm_function_text(va)
+            model = build_function_cfg_model(asm, function_start=va)
+            analysis = analyze_function_cfg(model)
+            self._cfg_intel_summary[f"0x{va:08X}"] = {
+                "model": model,
+                "analysis": analysis,
+            }
+            lines = [
+                f"Function: 0x{va:08X}",
+                f"Basic blocks: {analysis.get('basic_block_count', 0)}",
+                f"Branches: {analysis.get('branch_count', 0)}",
+                f"Branch density: {analysis.get('branch_density', 0)}",
+                f"Unresolved edges: {analysis.get('unresolved_edge_count', 0)}",
+                f"Loop/back-edge hints: {analysis.get('loop_back_edge_hints', [])}",
+                f"Unreachable block hints: {analysis.get('unreachable_block_hints', [])}",
+                f"Possible opaque predicate hints: {analysis.get('possible_opaque_predicate_hints', [])}",
+                f"Suspicious CFG indicators: {analysis.get('suspicious_control_flow_indicators', [])}",
+            ]
+            self.cfg_intel_view.setPlainText("\n".join(lines))
+        except Exception as e:
+            self.cfg_intel_view.setPlainText(f"CFG intelligence error: {e}")
+
+    def _rebuild_naming_intelligence(self):
+        try:
+            self._naming_suggestions = generate_all_name_suggestions(
+                profiles=getattr(self, "_function_profiles", {}),
+                behavior_summaries=getattr(self, "_behavior_summaries", {}),
+                call_graph_summary=getattr(self, "_call_graph_summary", {}),
+            )
+            self.session.naming_suggestions = dict(self._naming_suggestions)
+            self.session.applied_suggested_names = dict(self._applied_suggested_names)
+        except Exception as e:
+            self._naming_suggestions = {}
+            self.console(f"Naming intelligence error: {e}")
+
+    def _update_data_flow_for_function(self, va: int):
+        try:
+            asm = self._disasm_function_text(va)
+            strings_map = {}
+            for x in getattr(self, "_xrefs", []):
+                if x.xref_type == "string" and isinstance(x.dst, int) and x.string_value:
+                    strings_map[int(x.dst)] = x.string_value
+            fx = [x for x in getattr(self, "_xrefs", []) if x.src_function == va or x.dst_function == va]
+            self._data_flow_by_function[f"0x{va:08X}"] = analyze_function_data_flow(
+                disasm_text=asm,
+                xrefs=fx,
+                strings_by_addr=strings_map,
+            )
+            self._api_semantics_by_function[f"0x{va:08X}"] = interpret_api_semantics(
+                self._data_flow_by_function[f"0x{va:08X}"]
+            )
+            self._rebuild_behavior_patterns()
+            self._rebuild_threat_narrative()
+        except Exception as e:
+            self._data_flow_by_function[f"0x{va:08X}"] = {"error": str(e)}
+            self._api_semantics_by_function[f"0x{va:08X}"] = {"error": str(e)}
+            self._behavior_patterns = {"error": str(e)}
+            self._threat_narrative = {"error": str(e)}
+
+    def _rebuild_behavior_patterns(self):
+        try:
+            self._behavior_patterns = detect_behavior_patterns(
+                api_semantics_by_function=getattr(self, "_api_semantics_by_function", {}) or {},
+                data_flow_by_function=getattr(self, "_data_flow_by_function", {}) or {},
+                call_graph_model=getattr(self, "_call_graph_model", {}) or {},
+                call_graph_summary=getattr(self, "_call_graph_summary", {}) or {},
+            )
+        except Exception as e:
+            self._behavior_patterns = {"error": str(e)}
+
+    def _rebuild_threat_narrative(self):
+        try:
+            hashes = {}
+            if self.current_file:
+                import hashlib
+                p = Path(self.current_file)
+                b = p.read_bytes() if p.exists() else b""
+                hashes = {
+                    "sha256": hashlib.sha256(b).hexdigest() if b else "",
+                    "md5": hashlib.md5(b).hexdigest() if b else "",
+                }
+            meta = {
+                "path": self.current_file or "",
+                "entry_point": f"0x{int(self.disasm.get_entry_point()):08X}" if self.disasm else "",
+                "hashes": hashes,
+            }
+            strings_rows = self.str_view.toPlainText().splitlines()[:3000]
+            self._threat_narrative = build_threat_narrative(
+                behavior_patterns=getattr(self, "_behavior_patterns", {}) or {},
+                api_semantics=getattr(self, "_api_semantics_by_function", {}) or {},
+                data_flow_insights=getattr(self, "_data_flow_by_function", {}) or {},
+                function_intelligence=normalize_function_intel_summary(getattr(self, "_function_intel_summary", {}) or {}),
+                call_graph_intelligence=getattr(self, "_call_graph_summary", {}) or {},
+                cfg_intelligence=getattr(self, "_cfg_intel_summary", {}) or {},
+                hashes_and_metadata=meta,
+                extracted_strings=strings_rows,
+            )
+            self._render_threat_narrative()
+        except Exception as e:
+            self._threat_narrative = {"error": str(e)}
+            self.threat_narrative_view.setPlainText(f"Threat narrative error: {e}")
+
+    def _render_threat_narrative(self):
+        n = self._threat_narrative or {}
+        if not isinstance(n, dict) or not n:
+            self.threat_narrative_view.setPlainText("No threat narrative available.")
+            return
+        if n.get("error"):
+            self.threat_narrative_view.setPlainText(f"Threat narrative error: {n.get('error')}")
+            return
+        lines = [
+            "[Threat Overview]",
+            f"Summary: {(n.get('threat_overview') or {}).get('summary', '-')}",
+            "Evidence:",
+        ]
+        lines.extend([f"  - {x}" for x in ((n.get("threat_overview") or {}).get("evidence") or [])[:8]])
+        lines.extend(["", "[Capability Summary]"])
+        for row in (n.get("capability_summary") or [])[:12]:
+            lines.append(f"  - {row.get('capability')} (confidence={row.get('confidence')})")
+            for ev in (row.get("evidence") or [])[:2]:
+                lines.append(f"      evidence: {ev}")
+        lines.extend(["", "[Execution Flow Summary]"])
+        lines.extend([f"  - {x}" for x in (n.get("execution_flow_summary") or [])[:8]])
+        lines.extend(["", "[Key Functions]"])
+        for row in (n.get("key_functions") or [])[:10]:
+            lines.append(f"  - {row.get('function')} | role={row.get('role')}")
+            for ev in (row.get("evidence") or [])[:2]:
+                lines.append(f"      evidence: {ev}")
+            lines.append(f"      why: {row.get('why_it_matters')}")
+        ioc = n.get("indicators_of_compromise") or {}
+        lines.extend([
+            "",
+            "[Indicators of Compromise (IoC)]",
+            f"URLs: {ioc.get('urls', [])[:8]}",
+            f"IPs: {ioc.get('ips', [])[:8]}",
+            f"File paths: {ioc.get('file_paths', [])[:8]}",
+            f"Mutexes: {ioc.get('mutexes', [])[:8]}",
+            f"Relevant API usage: {(ioc.get('relevant_api_usage', [])[:8])}",
+            "",
+            "[Risk Assessment]",
+            f"Level: {(n.get('risk_assessment') or {}).get('level', '-')}",
+            f"Reason: {(n.get('risk_assessment') or {}).get('reason', '-')}",
+            "",
+            "[Caveats]",
+        ])
+        lines.extend([f"  - {x}" for x in (n.get("caveats") or [])])
+        self.threat_narrative_view.setPlainText("\n".join(lines))
+
+    def _render_function_profile(self, va: int):
+        prof = getattr(self, "_function_profiles", {}).get(va)
+        if not prof:
+            self.function_details_view.setPlainText(
+                f"Function: 0x{va:08X}\nNo function intelligence profile available."
+            )
+            return
+        d = prof.to_dict()
+        lines = [
+            f"Function: {d['start_hex']} -> {d['end_hex'] or 'EOF'}",
+            f"Size estimate: {d['size_estimate']}",
+            f"Instruction count: {d['instruction_count']}",
+            f"Basic blocks (est): {d['basic_block_count']}",
+            f"Inbound xrefs: {d['inbound_xrefs']}",
+            f"Outbound xrefs: {d['outbound_xrefs']}",
+            f"Calls made: {', '.join([f'0x{x:08X}' for x in d['calls_made']]) or '-'}",
+            f"Referenced APIs: {', '.join(d['referenced_apis']) or '-'}",
+            f"Suspicious APIs: {', '.join(d['suspicious_api_usage']) or '-'}",
+            f"Referenced strings: {', '.join(d['referenced_strings'][:8]) or '-'}",
+            f"Risk indicators: {', '.join(d['risk_indicators']) or '-'}",
+            f"Comments: {', '.join(d['comments']) or '-'}",
+            f"Labels: {', '.join(d['labels']) or '-'}",
+            f"Bookmarked: {d['bookmarks']}",
+            "",
+            "[Stack/Calling Heuristics]",
+            f"Prologue: {d['prologue_pattern'] or '-'}",
+            f"Epilogue: {d['epilogue_pattern'] or '-'}",
+            f"Frame size estimate: {d['stack_frame_size_estimate']}",
+            f"Local offsets: {', '.join(d['local_offsets_estimate']) or '-'}",
+            f"Argument offsets: {', '.join(d['argument_offsets_estimate']) or '-'}",
+            f"Calling convention hint: {d['calling_convention_hint']}",
+            "",
+            d.get("heuristic_note", ""),
+        ]
+        behavior = (self._behavior_summaries or {}).get(f"0x{va:08X}") or {}
+        if behavior:
+            lines.extend([
+                "",
+                "[Behavioral Summary (Heuristic)]",
+                f"Summary: {behavior.get('short_behavior_summary', '-')}",
+                f"Confidence: {behavior.get('confidence', 'low')}",
+                f"Possible capability tags: {', '.join(behavior.get('possible_capability_tags', [])) or '-'}",
+                "Evidence:",
+            ])
+            lines.extend([f"  - {x}" for x in behavior.get("evidence_bullets", [])])
+            lines.append("Caveats:")
+            lines.extend([f"  - {x}" for x in behavior.get("caveats", [])])
+        sugg = (self._naming_suggestions or {}).get(f"0x{va:08X}") or {}
+        if sugg:
+            lines.extend([
+                "",
+                "[Symbol & Naming Intelligence]",
+                f"Suggested name: {sugg.get('suggested_name', '-')}",
+                f"Confidence: {sugg.get('confidence', 'low')}",
+                "Evidence:",
+            ])
+            lines.extend([f"  - {x}" for x in sugg.get("evidence_bullets", [])])
+            lines.append("Caveats:")
+            lines.extend([f"  - {x}" for x in sugg.get("caveats", [])])
+        flow = (self._data_flow_by_function or {}).get(f"0x{va:08X}") or {}
+        if flow:
+            lines.extend([
+                "",
+                "[Data Flow Insights (Estimated)]",
+                f"Heuristic note: {flow.get('heuristic_note', '-')}",
+                f"API argument insights: {len(flow.get('api_argument_insights', []))}",
+                f"String flows: {len(flow.get('string_flows', []))}",
+            ])
+            for row in (flow.get("api_argument_insights") or [])[:6]:
+                lines.append(f"  - API {row.get('api')} @ {row.get('call_site')} ({row.get('confidence')}): estimated args={row.get('arguments')}")
+            for row in (flow.get("string_flows") or [])[:6]:
+                lines.append(f"  - String '{row.get('string')}' -> {row.get('api')} via {row.get('via_register')} @ {row.get('call_site')} [estimated]")
+        sem = (self._api_semantics_by_function or {}).get(f"0x{va:08X}") or {}
+        if sem:
+            lines.extend([
+                "",
+                "[API Semantics Intelligence (Estimated)]",
+                f"Note: {sem.get('heuristic_note', '-')}",
+            ])
+            for row in (sem.get("high_value_calls") or sem.get("api_semantics_calls") or [])[:8]:
+                lines.append(
+                    f"  - {row.get('api')} @ {row.get('call_site')}: tags={row.get('capability_tags')} | args={row.get('interpreted_arguments')} | evidence={row.get('evidence')}"
+                )
+        bp = (self._behavior_patterns or {}).get("patterns") or []
+        rel = [r for r in bp if f"0x{va:08X}" in (r.get("involved_functions") or [])]
+        if rel:
+            lines.extend([
+                "",
+                "[Behavior Patterns (Estimated Candidates)]",
+                f"Note: {(self._behavior_patterns or {}).get('heuristic_note', '-')}",
+            ])
+            for row in rel[:6]:
+                lines.append(f"  - Pattern={row.get('pattern')} | confidence={row.get('confidence')} | scope={row.get('scope')}")
+                for ev in (row.get("evidence_chain") or [])[:5]:
+                    lines.append(f"      evidence: {ev}")
+                for cv in (row.get("caveats") or [])[:2]:
+                    lines.append(f"      caveat: {cv}")
+        self.function_details_view.setPlainText("\n".join(lines))
+
+    def _rename_function(self, va: int):
+        old = self._display_func_name(va, self._functions.get(va, f"sub_{va:08X}"))
+        new_name, ok = QInputDialog.getText(self, "Rename Function", "Function name:", text=old)
+        if not ok:
+            return
+        new_name = new_name.strip()
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$", new_name):
+            QMessageBox.warning(self, "Rename", "Invalid function name format.")
+            return
+        all_names = {self._display_func_name(v, n) for v, n in getattr(self, "_functions", {}).items() if v != va}
+        if new_name in all_names:
+            QMessageBox.warning(self, "Rename", "A function with this name already exists.")
+            return
+        key = f"0x{va:08X}"
+        self.session.renamed_functions[key] = new_name
+        self._rebuild_function_intelligence()
+        self._rebuild_naming_intelligence()
+        self._refresh_function_list()
+        self._save_session_for_current_file()
+        self.console(f"Renamed {key} -> {new_name}")
+
+    def _apply_suggested_name(self, va: int):
+        key = f"0x{va:08X}"
+        row = (self._naming_suggestions or {}).get(key) or {}
+        nm = row.get("suggested_name")
+        if not nm:
+            QMessageBox.information(self, "Suggested Name", f"No suggested name for {key}.")
+            return
+        if key in self.session.renamed_functions:
+            ans = QMessageBox.question(
+                self,
+                "Overwrite analyst name?",
+                f"{key} already has analyst name '{self.session.renamed_functions[key]}'. Overwrite with '{nm}'?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if ans != QMessageBox.StandardButton.Yes:
+                return
+        self.session.renamed_functions[key] = nm
+        self._applied_suggested_names[key] = nm
+        self._refresh_function_list()
+        self._save_session_for_current_file()
+
+    def _apply_all_high_confidence_suggested_names(self):
+        suggestions = self._naming_suggestions or {}
+        overwrite = False
+        if any(k in self.session.renamed_functions for k in suggestions):
+            ans = QMessageBox.question(
+                self,
+                "Overwrite analyst names?",
+                "Some functions already have analyst names. Allow overwrite while applying high-confidence suggestions?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            overwrite = ans == QMessageBox.StandardButton.Yes
+        apply_map = select_high_confidence_applications(
+            suggestions=suggestions,
+            analyst_renamed=self.session.renamed_functions,
+            allow_overwrite=overwrite,
+        )
+        if not apply_map:
+            QMessageBox.information(self, "Suggested Names", "No high-confidence names to apply.")
+            return
+        self.session.renamed_functions.update(apply_map)
+        self._applied_suggested_names.update(apply_map)
+        self._refresh_function_list()
+        self._save_session_for_current_file()
+
+    def _address_under_cursor(self, edit: QTextEdit) -> int | None:
+        cur = edit.textCursor()
+        cur.select(QTextCursor.SelectionType.LineUnderCursor)
+        line = cur.selectedText()
+        m = re.search(r"0x([0-9A-Fa-f]{6,16})", line)
+        if not m:
+            return None
+        return int(m.group(0), 16)
+
+    def on_asm_context_menu(self, pos):
+        edit = self.sender()
+        if not isinstance(edit, QTextEdit):
+            edit = self.asm_view
+        va = self._address_under_cursor(edit)
+        m = QMenu(self)
+        a_comment = m.addAction("Add/Edit Comment")
+        a_label = m.addAction("Add/Edit Label")
+        a_bookmark = m.addAction("Toggle Bookmark")
+        a_xrefs_to = m.addAction("Show Xrefs to this address")
+        a_xrefs_from = m.addAction("Show references from this function")
+        act = m.exec(edit.mapToGlobal(pos))
+        if va is None:
+            return
+        if act == a_comment:
+            self._edit_comment(va)
+        elif act == a_label:
+            self._edit_label(va)
+        elif act == a_bookmark:
+            self._toggle_bookmark(va)
+        elif act == a_xrefs_to:
+            self._show_xrefs_to(va)
+        elif act == a_xrefs_from:
+            self._show_refs_from_current_function()
+
+    def on_string_context_menu(self, pos):
+        m = QMenu(self)
+        a1 = m.addAction("Show String Xrefs")
+        act = m.exec(self.str_view.mapToGlobal(pos))
+        if act == a1:
+            self._show_string_usage_from_cursor()
+
+    def on_import_context_menu(self, pos):
+        cur = self.imports_view.textCursor()
+        cur.select(QTextCursor.SelectionType.LineUnderCursor)
+        line = cur.selectedText().strip()
+        m = QMenu(self)
+        a1 = m.addAction("Show API references")
+        act = m.exec(self.imports_view.mapToGlobal(pos))
+        if act != a1 or not line:
+            return
+        api = line.split()[-1]
+        rows = [x for x in getattr(self, "_xrefs", []) if x.api and api.lower() in x.api.lower()]
+        self.xrefs_to_view.clear()
+        for x in rows:
+            self.xrefs_to_view.addItem(f"0x{x.src:08X} -> {x.api} [{x.xref_type}|{x.confidence}] {x.instruction}")
+        if not rows:
+            self.xrefs_to_view.addItem(f"No references found for {api}")
+        self.tabs.setCurrentWidget(self.xrefs_to_view)
+
+    def _show_string_usage_from_cursor(self):
+        cur = self.str_view.textCursor()
+        cur.select(QTextCursor.SelectionType.LineUnderCursor)
+        s = cur.selectedText().strip()
+        if not s:
+            return
+        rows = [x for x in getattr(self, "_xrefs", []) if x.string_value and s in x.string_value]
+        self.xrefs_to_view.clear()
+        for x in rows:
+            dst = f"0x{x.dst:08X}" if x.dst is not None else "<unresolved>"
+            self.xrefs_to_view.addItem(f"0x{x.src:08X} -> {dst} [string] {x.string_value}")
+        if not rows:
+            self.xrefs_to_view.addItem("No string references found (first-pass xref limitations).")
+        self.tabs.setCurrentWidget(self.xrefs_to_view)
+
+    def _edit_comment(self, va: int):
+        key = f"0x{va:08X}"
+        old = self.session.comments.get(key, "")
+        txt, ok = QInputDialog.getText(self, "Comment", f"Comment for {key}:", text=old)
+        if ok:
+            if txt.strip():
+                self.session.comments[key] = txt.strip()
+            else:
+                self.session.comments.pop(key, None)
+            self._rebuild_function_intelligence()
+            self._rebuild_naming_intelligence()
+            self._refresh_function_list()
+            self._save_session_for_current_file()
+            self._reannotate_disassembly_views()
+
+    def _edit_label(self, va: int):
+        key = f"0x{va:08X}"
+        old = self.session.labels.get(key, "")
+        txt, ok = QInputDialog.getText(self, "Label", f"Label for {key}:", text=old)
+        if ok:
+            if txt.strip():
+                self.session.labels[key] = txt.strip()
+            else:
+                self.session.labels.pop(key, None)
+            self._rebuild_function_intelligence()
+            self._rebuild_naming_intelligence()
+            self._refresh_function_list()
+            self._save_session_for_current_file()
+            self._reannotate_disassembly_views()
+
+    def _toggle_bookmark(self, va: int):
+        key = f"0x{va:08X}"
+        if key in self.session.bookmarks:
+            self.session.bookmarks.remove(key)
+        else:
+            self.session.bookmarks.append(key)
+        self._rebuild_function_intelligence()
+        self._rebuild_naming_intelligence()
+        self._refresh_function_list()
+        self._save_session_for_current_file()
+        self._refresh_bookmarks_panel()
+
+    def _refresh_bookmarks_panel(self):
+        self.bookmarks_view.clear()
+        for key in sorted(set(self.session.bookmarks)):
+            label = self.session.labels.get(key) or self.session.comments.get(key) or ""
+            self.bookmarks_view.addItem(f"{key}  {label}")
+
+    def on_bookmark_double_clicked(self, item):
+        m = re.match(r"(0x[0-9A-Fa-f]+)", item.text().strip())
+        if not m:
+            return
+        va = int(m.group(1), 16)
+        self._open_in_erevos_view(va, self.session.labels.get(m.group(1), f"sub_{va:08X}"))
+
+    def _reannotate_disassembly_views(self):
+        # lightweight re-annotation of currently visible disassembly text
+        self._annotate_editor(self.asm_view)
+        self._annotate_editor(self.hex_view)
+
+    def _annotate_editor(self, edit: QTextEdit):
+        lines = edit.toPlainText().splitlines()
+        out = []
+        for ln in lines:
+            m = re.match(r"0x([0-9A-Fa-f]{6,16}):", ln.strip())
+            if m:
+                key = "0x" + m.group(1).upper()
+                ann = []
+                if key in self.session.labels:
+                    ann.append(f"label={self.session.labels[key]}")
+                if key in self.session.comments:
+                    ann.append(f"comment={self.session.comments[key]}")
+                if key in self.session.bookmarks:
+                    ann.append("bookmark")
+                if ann and "; [" not in ln:
+                    ln += "    ; [" + " | ".join(ann) + "]"
+            out.append(ln)
+        edit.setPlainText("\n".join(out))
+
+    def _show_xrefs_to(self, va: int):
+        self.xrefs_to_view.clear()
+        rows = [x for x in getattr(self, "_xrefs", []) if x.dst == va or x.dst_function == va]
+        for x in rows:
+            dst = f"0x{x.dst:08X}" if x.dst is not None else "<unresolved>"
+            src = f"0x{x.src:08X}"
+            self.xrefs_to_view.addItem(f"{src} -> {dst} [{x.xref_type}|{x.confidence}] {x.instruction}")
+        if not rows:
+            self.xrefs_to_view.addItem(f"No xrefs to 0x{va:08X}. (Limitations apply for indirect flows)")
+        self.tabs.setCurrentWidget(self.xrefs_to_view)
+
+    def _show_refs_from_current_function(self):
+        va = self._address_under_cursor(self.asm_view)
+        src_func = None
+        if va is not None:
+            for fva in sorted(getattr(self, "_functions", {}).keys()):
+                if fva <= va:
+                    src_func = fva
+                else:
+                    break
+        self.xrefs_from_view.clear()
+        rows = [x for x in getattr(self, "_xrefs", []) if (src_func is not None and x.src_function == src_func)]
+        for x in rows:
+            dst = f"0x{x.dst:08X}" if x.dst is not None else "<unresolved>"
+            src = f"0x{x.src:08X}"
+            self.xrefs_from_view.addItem(f"{src} -> {dst} [{x.xref_type}|{x.confidence}] {x.instruction}")
+        if not rows:
+            self.xrefs_from_view.addItem("No outbound refs found for selected function.")
+        self.tabs.setCurrentWidget(self.xrefs_from_view)
+
+    def on_xref_item_double_clicked(self, item):
+        m = re.search(r"->\\s+(0x[0-9A-Fa-f]+)", item.text())
+        if not m:
+            return
+        va = int(m.group(1), 16)
+        self._open_in_erevos_view(va, self.session.labels.get(m.group(1), f"sub_{va:08X}"))
+
+    def on_call_graph_item_double_clicked(self, item):
+        txt = item.text()
+        m = re.findall(r"0x[0-9A-Fa-f]{6,16}", txt)
+        if not m:
+            return
+        va = int(m[0], 16)
+        self._open_in_erevos_view(va, self.session.labels.get(m[0], f"sub_{va:08X}"))
+
+    def _save_session_for_current_file(self):
+        if not self.current_file:
+            return
+        self.session.last_opened_file = self.current_file
+        self.session.function_intel_summary = normalize_function_intel_summary(getattr(self, "_function_intel_summary", {}) or {})
+        self.session.behavior_summaries = dict(getattr(self, "_behavior_summaries", {}) or {})
+        self.session.call_graph_summary = dict(getattr(self, "_call_graph_summary", {}) or {})
+        self.session.cfg_intel_summary = dict(getattr(self, "_cfg_intel_summary", {}) or {})
+        self.session.naming_suggestions = dict(getattr(self, "_naming_suggestions", {}) or {})
+        self.session.applied_suggested_names = dict(getattr(self, "_applied_suggested_names", {}) or {})
+        self.session.data_flow_insights = dict(getattr(self, "_data_flow_by_function", {}) or {})
+        self.session.api_semantics_insights = dict(getattr(self, "_api_semantics_by_function", {}) or {})
+        self.session.behavior_patterns = dict(getattr(self, "_behavior_patterns", {}) or {})
+        self.session.threat_narrative = normalize_threat_narrative(getattr(self, "_threat_narrative", {}) or {})
+        p = self.session_path or SessionState.session_path_for_sample(self.current_file)
+        self.session.save(p)
+
+    def _load_session_for_current_file(self):
+        if not self.current_file:
+            return
+        p = self.session_path or SessionState.session_path_for_sample(self.current_file)
+        self.session = SessionState.load(p)
+        self._function_intel_summary = normalize_function_intel_summary(self.session.function_intel_summary)
+        self._behavior_summaries = dict(self.session.behavior_summaries or {})
+        self._call_graph_summary = dict(self.session.call_graph_summary or {})
+        self._cfg_intel_summary = dict(self.session.cfg_intel_summary or {})
+        self._naming_suggestions = dict(self.session.naming_suggestions or {})
+        self._applied_suggested_names = dict(self.session.applied_suggested_names or {})
+        self._data_flow_by_function = dict(self.session.data_flow_insights or {})
+        self._api_semantics_by_function = dict(self.session.api_semantics_insights or {})
+        self._behavior_patterns = dict(self.session.behavior_patterns or {})
+        self._threat_narrative = normalize_threat_narrative(self.session.threat_narrative)
+        self._render_threat_narrative()
+
+    def action_save_session(self):
+        if not self.current_file:
+            return
+        self._save_session_for_current_file()
+        QMessageBox.information(self, "Session", f"Session saved: {self.session_path}")
+
+    def action_load_session(self):
+        if not self.current_file:
+            return
+        self._load_session_for_current_file()
+        self._rebuild_function_intelligence()
+        self._rebuild_call_graph()
+        self._rebuild_naming_intelligence()
+        self._rebuild_threat_narrative()
+        self._refresh_function_list()
+        self._refresh_bookmarks_panel()
+        self._reannotate_disassembly_views()
+        QMessageBox.information(self, "Session", f"Session loaded: {self.session_path}")
+
+    def action_global_search(self):
+        q, ok = QInputDialog.getText(self, "Global Search", "Search across functions/strings/imports/addresses/comments:")
+        if not ok or not q.strip():
+            return
+        ql = q.strip().lower()
+        hits = []
+        for va, name in getattr(self, "_functions", {}).items():
+            dname = self._display_func_name(va, name)
+            blob = f"0x{va:08X} {dname}".lower()
+            if ql in blob:
+                hits.append(f"FUNC 0x{va:08X} {dname}")
+        for k, v in self.session.comments.items():
+            if ql in (k.lower() + " " + v.lower()):
+                hits.append(f"COMMENT {k} {v}")
+        for txt in self.str_view.toPlainText().splitlines()[:5000]:
+            if ql in txt.lower():
+                hits.append(f"STRING {txt[:120]}")
+                if len(hits) > 200:
+                    break
+        QMessageBox.information(self, "Global Search Results", "\n".join(hits[:200]) if hits else "No results.")
 
     # ----------------- Analyst workspace features -----------------
     def _display_func_name(self, va: int, fallback: str) -> str:
