@@ -1,0 +1,7 @@
+pefile
+capstone
+pyqt6
+graphviz
+pydot
+jinja2
+weasyprint
