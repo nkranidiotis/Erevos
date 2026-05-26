@@ -1,8 +1,0 @@
-pefile
-capstone
-pyqt6
-pyqt6-tools
-graphviz
-pydot
-jinja2
-weasyprint
