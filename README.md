@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.jpeg" alt="" width="780"/>
+</p>
+
 # Erevos
 
 **Static PE Disassembler & Forensic Analysis Toolkit**
@@ -11,39 +15,62 @@ It pairs a Capstone-powered disassembler with a layered intelligence pipeline
 that goes well beyond raw bytes: function profiling, call-graph and CFG
 analytics, data-flow insights, API semantics, behavior-pattern detection, a
 threat narrative with extracted IoCs, and per-sample session persistence so
-that analyst work (renames, comments, labels, bookmarks) survives across
-runs.
+that analyst work (renames, comments, labels, bookmarks) survives across runs.
 
 ---
 
-## Highlights
+## 🧭 The workspace
 
-### Five-page analyst workspace
+Erevos opens on a five-page workspace. Every page is wired to the same live
+analysis pipeline — switching pages never reruns work.
 
-- **Dashboard** — file metadata, risk gauge, classification, live call-graph
-  preview (click to inspect, double-click to open), behavior patterns,
-  threat-narrative snapshot, and key counters (functions, strings, imports,
-  xrefs, sections).
-- **Erevos View** — searchable function list with rich filters (renamed /
-  commented / bookmarked / suspicious-API / inbound-xref count / referenced
-  string), zoomable function box, full disassembly view, and a function
-  intelligence panel with behavioral summary, suggested name, and risk
-  indicators.
-- **Analysis** — function-centric drill-in with disassembly, CFG mini-graph,
-  risk gauge, key indicators, strings referenced by the function, and a
-  data-flow summary (API argument insights, string flows, memory writes,
-  network endpoints).
-- **Hex** — three-column layout: PE section list (click to jump), hex dump
-  with optional highlighting for strings / API IAT slots / jump targets, and
-  a decoded-view card that interprets the bytes under the cursor (instruction
-  type, target, resolved symbol, description).
-- **CFG** — three-column layout: overview / legend / complexity metrics
-  (cyclomatic, loops, dead-code blocks, suspicious indicators), interactive
-  bezier-edge graph with arrowheads and BFS layout, and a node-info panel
-  with per-block instruction preview, predecessors/successors, and call
-  count. Includes a live minimap and PNG export.
+### Dashboard
 
-### Intelligence pipeline
+File metadata, risk gauge, classification, live call-graph preview (click to
+inspect, double-click to open), behavior patterns, threat-narrative snapshot,
+and key counters (functions, strings, imports, xrefs, sections).
+
+<p align="center"><img src="assets/dashboard.png" alt="Dashboard"/></p>
+
+### Erevos View
+
+Searchable function list with rich filters (renamed / commented / bookmarked
+/ suspicious-API / inbound-xref count / referenced string), zoomable function
+box, full disassembly view, and a function-intelligence panel with behavioral
+summary, suggested name, and risk indicators.
+
+<p align="center"><img src="assets/erevos-view.png" alt="Erevos View"/></p>
+
+### Analysis
+
+Function-centric drill-in with disassembly, CFG mini-graph, risk gauge, key
+indicators, strings referenced by the function, and a data-flow summary (API
+argument insights, string flows, memory writes, network endpoints).
+
+<p align="center"><img src="assets/Analysis-tab.png" alt="Analysis"/></p>
+
+### Hex
+
+Three-column layout: PE section list (click to jump), hex dump with optional
+highlighting for strings / API IAT slots / jump targets, and a decoded-view
+card that interprets the bytes under the cursor (instruction type, target,
+resolved symbol, description).
+
+<p align="center"><img src="assets/hex-tab.png" alt="Hex"/></p>
+
+### CFG
+
+Three-column layout: overview / legend / complexity metrics (cyclomatic,
+loops, dead-code blocks, suspicious indicators), interactive bezier-edge
+graph with arrowheads and BFS layout, and a node-info panel with per-block
+instruction preview, predecessors/successors, and call count. Includes a
+live minimap and PNG export.
+
+<p align="center"><img src="assets/cfg-tab.png" alt="CFG"/></p>
+
+---
+
+## 🧠 Intelligence pipeline
 
 All of the following run automatically when a sample is loaded:
 
@@ -63,14 +90,15 @@ All of the following run automatically when a sample is loaded:
   (`"cmd.exe" -> CreateProcessA`), memory-write hints, network endpoints.
 - **API semantics** — interpreted arguments and capability tags for
   high-value calls.
-- **Behavior patterns** — multi-function pattern detection
-  (persistence, injection, lateral movement, etc.) with evidence chains and
-  confidence.
+- **Behavior patterns** — multi-function pattern detection (persistence,
+  injection, lateral movement, etc.) with evidence chains and confidence.
 - **Threat narrative** — capability summary, execution-flow summary, key
   functions with rationale, and an IoC roll-up: URLs, IPs, file paths,
   mutexes, relevant API usage.
 
-### Forensic reporting
+---
+
+## 📝 Forensic reporting
 
 Click **Generate Forensic Report** and Erevos asks for the chain-of-custody
 fields before writing anything:
@@ -82,10 +110,15 @@ fields before writing anything:
 
 The resulting HTML report embeds the full intelligence pipeline output along
 with file hashes (SHA-256, MD5), entry point, section table, imports/exports,
-strings, risk scoring, packer heuristics, and every analyst artifact (renames,
-comments, labels, bookmarks). Disassembly is also exportable as plain `.txt`.
+strings, risk scoring, packer heuristics, and every analyst artifact
+(renames, comments, labels, bookmarks). Disassembly is also exportable as
+plain `.txt`.
 
-### Analyst-friendly UX
+📄 **See a sample report:** [Github Report Sample.pdf](<Github Report Sample.pdf>)
+
+---
+
+## ⚙️ Analyst-friendly UX
 
 - Drag-and-drop a PE onto the window to load it.
 - Background-threaded loader keeps the GUI responsive — twelve weighted
@@ -95,19 +128,19 @@ comments, labels, bookmarks). Disassembly is also exportable as plain `.txt`.
   xrefs.
 - Per-sample session is saved automatically next to the sample's hash; all
   your work returns the next time you open the same binary.
-- Crash log + auto-rotating diagnostic log at
-  `%LOCALAPPDATA%\Erevos\logs\erevos.log` (and Python-level traceback in
+- Crash log and auto-rotating diagnostic log at
+  `%LOCALAPPDATA%\Erevos\logs\erevos.log` (Python-level traceback in
   `crash-*.log` if anything ever goes sideways).
 
 ---
 
-## Installation
+## 🚀 Installation
 
 Requires **Python 3.10 or newer** and a working PyQt6 stack.
 
 ```bash
-git clone https://github.com/<your-org>/erevos.git
-cd erevos
+git clone https://github.com/nkranidiotis/Erevos.git
+cd Erevos
 pip install -r requirements.txt
 python main.py
 ```
@@ -123,7 +156,7 @@ Dependencies are pinned in `requirements.txt`:
 
 ---
 
-## Repository layout
+## 📁 Repository layout
 
 ```
 erevos/
@@ -148,12 +181,12 @@ erevos/
 │   ├── styles.qss
 │   └── logo.png
 ├── tests/                  unit tests for the analysis modules
-└── docs/
+└── assets/                 screenshots and icons
 ```
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
 - YARA / Sigma rule generation from extracted IoCs and behavior patterns.
 - STIX 2.1 / MISP export of the IoC bundle.
